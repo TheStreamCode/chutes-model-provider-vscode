@@ -12,6 +12,7 @@ tsconfig.json
 .vscodeignore
 docs/**
 media/*.svg
+media/screenshot-*.png
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 SECURITY.md

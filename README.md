@@ -8,6 +8,8 @@
 
 Leverage [Chutes.ai](https://chutes.ai) open-source models — including DeepSeek, Qwen, GLM and Kimi — directly within VS Code's GitHub Copilot Chat. The full Chutes catalogue is discovered automatically, with streaming, tool calling (agent mode) and vision. **No GitHub Copilot subscription required.**
 
+![Chutes models in the VS Code Language Models editor](https://raw.githubusercontent.com/TheStreamCode/chutes-model-provider-vscode/main/media/screenshot-models.png)
+
 ---
 
 ## ⚡ Quick Start
@@ -29,6 +31,8 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 - **Streaming** — responses stream token by token and honour cancellation.
 - **Secure key storage** — your API key lives in VS Code SecretStorage (OS keychain), never in settings.
 - **Configurable filtering** — narrow the picker to just the models you care about.
+
+![Using a Chutes vision model in VS Code Chat](https://raw.githubusercontent.com/TheStreamCode/chutes-model-provider-vscode/main/media/screenshot-chat.png)
 
 ---
 

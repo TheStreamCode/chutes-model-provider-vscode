@@ -20,13 +20,4 @@ export class SecretStore {
   clear(): Thenable<void> {
     return this.secrets.delete(API_KEY);
   }
-
-  /** Fires when the stored API key changes (set or cleared). */
-  onDidChange(listener: () => void): vscode.Disposable {
-    return this.secrets.onDidChange((e) => {
-      if (e.key === API_KEY) {
-        listener();
-      }
-    });
-  }
 }

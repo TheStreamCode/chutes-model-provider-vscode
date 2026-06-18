@@ -12,7 +12,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     provider,
     vscode.lm.registerLanguageModelChatProvider('chutes', provider),
-    secrets.onDidChange(() => provider.invalidate()),
     vscode.commands.registerCommand('chutes.manage', () => manageApiKey(secrets, provider)),
     vscode.commands.registerCommand('chutes.refreshModels', () => {
       provider.invalidate();
@@ -41,6 +40,7 @@ async function manageApiKey(secrets: SecretStore, provider: ChutesChatModelProvi
 
   if (choice === CLEAR) {
     await secrets.clear();
+    provider.invalidate();
     void vscode.window.showInformationMessage('Chutes AI: API key cleared.');
     return;
   }
@@ -63,5 +63,6 @@ async function manageApiKey(secrets: SecretStore, provider: ChutesChatModelProvi
   }
 
   await secrets.set(trimmed);
+  provider.invalidate();
   void vscode.window.showInformationMessage('Chutes AI: API key saved.');
 }
