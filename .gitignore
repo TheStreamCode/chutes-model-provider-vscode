@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+*.vsix
+test/harness.cjs
+test/unit.test.cjs
+.DS_Store

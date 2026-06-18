@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check-types
+      - run: npm test
+      - run: npm run package
+      - name: Package VSIX
+        run: npx @vscode/vsce package --out chutes-model-provider-vscode.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: chutes-model-provider-vscode.vsix

@@ -1,0 +1,113 @@
+{
+  "name": "chutes-model-provider-vscode",
+  "displayName": "Chutes AI — Chat Model Provider (DeepSeek, Qwen, GLM, Kimi)",
+  "description": "Use Chutes.ai models in VS Code Chat. Models are discovered automatically, with streaming, tool calling (agent mode) and vision support.",
+  "version": "0.1.0",
+  "publisher": "mikesoft",
+  "author": {
+    "name": "Michael Gasperini",
+    "url": "https://mikesoft.it"
+  },
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#0d1117",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheStreamCode/chutes-model-provider-vscode"
+  },
+  "homepage": "https://github.com/TheStreamCode/chutes-model-provider-vscode#readme",
+  "bugs": {
+    "url": "https://github.com/TheStreamCode/chutes-model-provider-vscode/issues"
+  },
+  "sponsor": {
+    "url": "https://github.com/sponsors/TheStreamCode"
+  },
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "chutes",
+    "ai",
+    "llm",
+    "language model",
+    "model provider",
+    "copilot",
+    "chat",
+    "byok",
+    "openai",
+    "deepseek",
+    "qwen",
+    "glm",
+    "kimi"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "chutes",
+        "displayName": "Chutes AI",
+        "managementCommand": "chutes.manage"
+      }
+    ],
+    "commands": [
+      {
+        "command": "chutes.manage",
+        "title": "Manage API Key",
+        "category": "Chutes AI"
+      },
+      {
+        "command": "chutes.refreshModels",
+        "title": "Refresh Models",
+        "category": "Chutes AI"
+      }
+    ],
+    "configuration": {
+      "title": "Chutes AI",
+      "properties": {
+        "chutes.endpoint": {
+          "type": "string",
+          "default": "https://llm.chutes.ai/v1",
+          "markdownDescription": "Base URL of the Chutes OpenAI-compatible API. Change only for self-hosted or proxy endpoints."
+        },
+        "chutes.modelFilter": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Restrict which models appear in the picker. Comma-separated terms; each is matched against the model id as a case-insensitive substring or a regular expression (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Leave empty to show all chat models."
+        },
+        "chutes.requestTimeoutMs": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 1000,
+          "markdownDescription": "Timeout (ms) for fetching the model list. Does not limit streaming chat responses."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "check-types": "tsc --noEmit",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "npm run check-types && node esbuild.js --production",
+    "test:build": "esbuild test/unit.test.ts --bundle --platform=node --format=cjs --outfile=test/unit.test.cjs --alias:vscode=./test/vscode-stub.cjs",
+    "test": "npm run test:build && node --test test/unit.test.cjs",
+    "test:live": "esbuild test/harness.ts --bundle --platform=node --format=cjs --outfile=test/harness.cjs --alias:vscode=./test/vscode-stub.cjs && node test/harness.cjs",
+    "check": "npm run check-types && node esbuild.js && npm test && vsce ls",
+    "vsix": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.104.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}
