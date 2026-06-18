@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.3.0
+
+- Added a **`@chutes` chat participant** for usage monitoring inside the chat panel: `@chutes /usage` shows spend for the current billing windows (monthly cap, 4-hour window) and your daily request quota; `@chutes /quota` shows per-model quotas. It reuses the API key already configured for the provider.
+
 ## 0.2.1
 
 - Fixed: entering the API key could silently do nothing. Saving the key fired a model-list change event in the middle of resolving models, which discarded the result. The provider no longer fires that event while resolving; the list now refreshes only after the key is managed. Key entry is reliable.

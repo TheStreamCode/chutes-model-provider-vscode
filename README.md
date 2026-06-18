@@ -31,6 +31,7 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 - **Streaming** — responses stream token by token and honour cancellation.
 - **Secure key storage** — your API key lives in VS Code SecretStorage (OS keychain), never in settings.
 - **Configurable filtering** — narrow the picker to just the models you care about.
+- **Usage & spend in chat** — ask `@chutes /usage` in the chat panel to see your Chutes spend and quotas.
 
 ![Using a Chutes vision model in VS Code Chat](https://raw.githubusercontent.com/TheStreamCode/chutes-model-provider-vscode/main/media/screenshot-chat.png)
 
@@ -55,6 +56,15 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 | --- | --- |
 | `Chutes AI: Manage API Key` | Set, update or clear your API key. |
 | `Chutes AI: Refresh Models` | Re-fetch the model list (e.g. after Chutes adds models). |
+
+## Usage & spend in chat
+
+Type **`@chutes`** in the chat input to check your Chutes account without leaving the editor:
+
+- **`@chutes /usage`** — spend for the current billing windows (monthly cap and 4-hour window) plus your daily request quota.
+- **`@chutes /quota`** — per-model quotas.
+
+It uses the same API key you configured for the provider. Note: VS Code does not let third-party providers display live spend inside Copilot's own usage UI, so this surfaces it as an on-demand chat reply.
 
 ## Privacy
 

@@ -15,6 +15,9 @@ import { ChutesClient } from '../src/chutesClient';
 import { ChutesChatModelProvider } from '../src/provider';
 import { SecretStore } from '../src/secrets';
 import { isChatModel, applyUserFilter, toChatInformation } from '../src/modelMapping';
+import { ChutesAccountClient } from '../src/usage/accountClient';
+import { normalizeDashboardData } from '../src/usage/normalize';
+import { formatUsageMarkdown } from '../src/chatParticipant';
 
 const KEY = process.env.CHUTES_KEY;
 if (!KEY) {
@@ -158,7 +161,9 @@ async function main(): Promise<void> {
   console.log('\n[7] Vision (image input)');
   if (visionModels.length > 0) {
     try {
-      const vModel = visionModels.find((m) => /qwen/i.test(m.id)) ?? visionModels[0];
+      // Prefer a non-reasoning vision model: heavy "thinking" models can spend the
+      // whole token budget on reasoning_content and return no visible content.
+      const vModel = visionModels.find((m) => /gemma/i.test(m.id)) ?? visionModels.find((m) => /27b/i.test(m.id)) ?? visionModels[0];
       const png = fs.readFileSync(path.join(__dirname, '..', 'media', 'icon.png'));
       const parts: unknown[] = [];
       const progress = { report: (p: unknown) => parts.push(p) };
@@ -177,6 +182,26 @@ async function main(): Promise<void> {
     }
   } else {
     console.log('  info  no vision-capable model found; skipped');
+  }
+
+  console.log('\n[8] Account usage (@chutes participant data path)');
+  try {
+    const payload = await new ChutesAccountClient(KEY as string).getDashboardPayload();
+    const data = normalizeDashboardData(
+      payload.subscriptionUsage,
+      payload.quotas,
+      payload.quotaUsageFallback,
+      payload.quotaUsageMe,
+      payload.invocationStatsLlm
+    );
+    check('usage windows resolved', data.windows.length > 0, data.windows.map((w) => w.label).join(', '));
+    const billing = data.windows.find((w) => w.kind === 'billing-cycle');
+    check('billing-cycle spend present', !!billing, billing ? `$${billing.used} / $${billing.limit}` : 'none');
+    const md = formatUsageMarkdown(data);
+    check('usage markdown renders', md.includes('Chutes usage'));
+    console.log(md.split('\n').map((l) => '    ' + l).join('\n'));
+  } catch (err) {
+    check('account usage fetch', false, (err as Error).message);
   }
 
   console.log(`\n${failed === 0 ? '✓ ALL TESTS PASSED' : '✗ SOME TESTS FAILED'}: ${passed} passed, ${failed} failed\n`);

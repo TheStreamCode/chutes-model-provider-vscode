@@ -10,6 +10,9 @@ import { isChatModel, applyUserFilter, toChatInformation } from '../src/modelMap
 import { convertMessages, convertTools, convertToolMode } from '../src/messageConverter';
 import { ChutesChatModelProvider } from '../src/provider';
 import { SecretStore } from '../src/secrets';
+import { formatUsageMarkdown, formatQuotasMarkdown } from '../src/chatParticipant';
+import { normalizeDashboardData } from '../src/usage/normalize';
+import type { DashboardData } from '../src/usage/types';
 import type { ChutesRawModel } from '../src/chutesClient';
 
 function model(partial: Partial<ChutesRawModel> & { id: string }): ChutesRawModel {
@@ -204,4 +207,73 @@ test('provider: concurrent selections are deduped to a single input box', async 
   ]);
   assert.ok(a.length > 0 && b.length > 0);
   assert.equal(prompts, 1);
+});
+
+// --- usage chat participant: markdown formatting + normalization ---
+
+test('formatUsageMarkdown renders plan and windows table', () => {
+  const data: DashboardData = {
+    plan: {
+      planName: 'Pro',
+      monthlyPriceUsd: 20,
+      monthlyCapUsd: 100,
+      fourHourCapUsd: 8.33,
+      dailyRequestLimit: 5000,
+      paygDiscountPercent: 10
+    },
+    windows: [
+      { id: 'b', kind: 'billing-cycle', label: 'Billing Cycle Cap', unit: 'usd', used: 55.339, limit: 100, remaining: 44.661, percentUsed: 55.339, resetLabel: null },
+      { id: 'd', kind: 'daily-requests', label: 'Daily Quota', unit: 'requests', used: 12, limit: 5000, remaining: 4988, percentUsed: 0.24, resetLabel: null }
+    ],
+    quotas: []
+  };
+  const md = formatUsageMarkdown(data);
+  assert.match(md, /Chutes usage/);
+  assert.match(md, /\*\*Plan:\*\* Pro · \$20\/mo/);
+  assert.match(md, /\$55\.34/); // USD formatted to 2 decimals
+  assert.match(md, /5,000/); // requests with thousands separator
+});
+
+test('formatUsageMarkdown handles empty data and unlimited limits', () => {
+  assert.match(formatUsageMarkdown({ plan: null, windows: [], quotas: [] }), /No usage data/);
+  const unlimited = formatUsageMarkdown({
+    plan: null,
+    quotas: [],
+    windows: [{ id: 'd', kind: 'daily-requests', label: 'Daily Quota', unit: 'requests', used: 0, limit: 0, remaining: null, percentUsed: null, resetLabel: null }]
+  });
+  assert.match(unlimited, /Unlimited/);
+});
+
+test('formatQuotasMarkdown renders rows, unlimited, and empty state', () => {
+  const md = formatQuotasMarkdown({
+    plan: null,
+    windows: [],
+    quotas: [
+      { modelLabel: 'All Models', quota: 5000, lastUpdated: null },
+      { modelLabel: 'deepseek-ai/DeepSeek-V3', quota: 0, lastUpdated: null }
+    ]
+  });
+  assert.match(md, /All Models/);
+  assert.match(md, /5,000/);
+  assert.match(md, /Unlimited/);
+  assert.match(formatQuotasMarkdown({ plan: null, windows: [], quotas: [] }), /No quota data/);
+});
+
+test('normalizeDashboardData parses spend windows and derives the plan', () => {
+  const subscriptionUsage = {
+    subscription: true,
+    custom: false,
+    monthly_price: 20,
+    billing_cycle_cap: { used: 55.339, limit: 100, remaining: 44.661 },
+    four_hour_window: { used: 0, limit: 8.3333, remaining: 8.3333 },
+    daily_quota_usage: { used: 0, limit: 5000, remaining: 5000 }
+  };
+  const quotas = [{ chute_id: '*', quota: 5000, model: 'All Models' }];
+  const data = normalizeDashboardData(subscriptionUsage as never, quotas as never, null, null, null);
+  assert.equal(data.plan?.planName, 'Pro');
+  const billing = data.windows.find((w) => w.kind === 'billing-cycle');
+  assert.ok(billing && billing.unit === 'usd');
+  assert.ok(Math.abs((billing?.used ?? 0) - 55.339) < 0.001);
+  assert.equal(billing?.limit, 100);
+  assert.ok(data.windows.some((w) => w.kind === 'daily-requests'));
 });

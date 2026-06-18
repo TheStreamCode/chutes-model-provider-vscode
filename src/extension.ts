@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { SecretStore } from './secrets';
 import { ChutesClient } from './chutesClient';
 import { ChutesChatModelProvider } from './provider';
+import { createUsageChatHandler } from './chatParticipant';
 import { getConfig } from './config';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -9,9 +10,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const client = new ChutesClient(getConfig);
   const provider = new ChutesChatModelProvider(secrets, client);
 
+  const usageParticipant = vscode.chat.createChatParticipant('chutes.usage', createUsageChatHandler(secrets));
+  usageParticipant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'icon.png');
+
   context.subscriptions.push(
     provider,
     vscode.lm.registerLanguageModelChatProvider('chutes', provider),
+    usageParticipant,
     vscode.commands.registerCommand('chutes.manage', () => manageApiKey(secrets, provider)),
     vscode.commands.registerCommand('chutes.refreshModels', () => {
       provider.invalidate();
