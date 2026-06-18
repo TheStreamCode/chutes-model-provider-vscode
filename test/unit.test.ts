@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import * as vscode from 'vscode';
 import { isChatModel, applyUserFilter, toChatInformation } from '../src/modelMapping';
 import { convertMessages, convertTools, convertToolMode } from '../src/messageConverter';
+import { ChutesChatModelProvider } from '../src/provider';
+import { SecretStore } from '../src/secrets';
 import type { ChutesRawModel } from '../src/chutesClient';
 
 function model(partial: Partial<ChutesRawModel> & { id: string }): ChutesRawModel {
@@ -107,4 +109,99 @@ test('convertTools maps name/description/schema; empty -> undefined', () => {
 test('convertToolMode maps Auto/Required', () => {
   assert.equal(convertToolMode(vscode.LanguageModelChatToolMode.Auto), 'auto');
   assert.equal(convertToolMode(vscode.LanguageModelChatToolMode.Required), 'required');
+});
+
+// --- provider: API-key prompt behavior (regression for the "prompt only once" bug) ---
+
+function fakeClient(models: ChutesRawModel[]): never {
+  return { listModels: async () => models } as never;
+}
+
+function memSecrets(initial?: string): SecretStore {
+  let value = initial;
+  const storage = {
+    get: async () => value,
+    store: async (_k: string, v: string) => {
+      value = v;
+    },
+    delete: async () => {
+      value = undefined;
+    },
+    onDidChange: () => ({ dispose() {} })
+  };
+  return new SecretStore(storage as never);
+}
+
+const RAW: ChutesRawModel[] = [model({ id: 'a/Chat-One', supported_features: ['tools'], context_length: 8000 })];
+const noToken = {} as never;
+
+test('provider: silent + no key returns [] and never prompts', async () => {
+  let prompts = 0;
+  vscode.window.showInputBox = (async () => {
+    prompts++;
+    return undefined;
+  }) as never;
+  const provider = new ChutesChatModelProvider(memSecrets(undefined), fakeClient(RAW));
+  const info = await provider.provideLanguageModelChatInformation({ silent: true }, noToken);
+  assert.equal(info.length, 0);
+  assert.equal(prompts, 0);
+});
+
+test('provider: non-silent + no key prompts and loads models, and keeps working on repeated selection', async () => {
+  let prompts = 0;
+  vscode.window.showInputBox = (async () => {
+    prompts++;
+    return 'cpk_test';
+  }) as never;
+  const provider = new ChutesChatModelProvider(memSecrets(undefined), fakeClient(RAW));
+
+  const first = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  assert.ok(first.length > 0);
+  assert.equal(prompts, 1);
+
+  // The key is now stored: selecting again must not re-prompt and must still work
+  // (this is the regression the "prompt only once" bug broke).
+  provider.invalidate();
+  const second = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  assert.ok(second.length > 0);
+  assert.equal(prompts, 1);
+});
+
+test('provider: non-silent + no key prompts AGAIN if the user dismissed the box before', async () => {
+  let prompts = 0;
+  // First selection: user dismisses the input box (returns undefined).
+  vscode.window.showInputBox = (async () => {
+    prompts++;
+    return undefined;
+  }) as never;
+  const provider = new ChutesChatModelProvider(memSecrets(undefined), fakeClient(RAW));
+
+  const dismissed = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  assert.equal(dismissed.length, 0);
+  assert.equal(prompts, 1);
+
+  // Second selection: the box must open again (the bug suppressed it forever).
+  vscode.window.showInputBox = (async () => {
+    prompts++;
+    return 'cpk_test';
+  }) as never;
+  const recovered = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  assert.ok(recovered.length > 0);
+  assert.equal(prompts, 2);
+});
+
+test('provider: concurrent selections are deduped to a single input box', async () => {
+  let prompts = 0;
+  vscode.window.showInputBox = (async () => {
+    prompts++;
+    await new Promise((r) => setTimeout(r, 10));
+    return 'cpk_test';
+  }) as never;
+  const provider = new ChutesChatModelProvider(memSecrets(undefined), fakeClient(RAW));
+  const [a, b] = await Promise.all([
+    provider.provideLanguageModelChatInformation({ silent: false }, noToken),
+    provider.provideLanguageModelChatInformation({ silent: false }, noToken)
+  ]);
+  assert.ok(a.length > 0 && b.length > 0);
+  assert.equal(prompts, 1);
 });

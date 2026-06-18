@@ -25,7 +25,7 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
   readonly onDidChangeLanguageModelChatInformation = this.changed.event;
 
   private cache?: { at: number; models: vscode.LanguageModelChatInformation[] };
-  private prompted = false;
+  private pendingKeyPrompt?: Thenable<string | undefined>;
 
   constructor(
     private readonly secrets: SecretStore,
@@ -35,7 +35,6 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
   /** Drops the cached model list and asks VS Code to re-query. */
   invalidate(): void {
     this.cache = undefined;
-    this.prompted = false;
     this.changed.fire();
   }
 
@@ -43,13 +42,17 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     options: { silent: boolean },
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelChatInformation[]> {
-    const apiKey = await this.secrets.get();
+    let apiKey = await this.secrets.get();
     if (!apiKey) {
-      if (!options.silent && !this.prompted) {
-        this.prompted = true;
-        void this.promptForKey();
+      if (options.silent) {
+        return [];
       }
-      return [];
+      // User-initiated (e.g. the user picked Chutes in "Manage Models"): let them
+      // enter a key right now. This opens every time it is needed — never suppressed.
+      apiKey = await this.requestApiKey();
+      if (!apiKey) {
+        return [];
+      }
     }
 
     if (this.cache && Date.now() - this.cache.at < CACHE_TTL_MS) {
@@ -171,13 +174,28 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     this.changed.dispose();
   }
 
-  private async promptForKey(): Promise<void> {
-    const choice = await vscode.window.showInformationMessage(
-      'Chutes AI: configure your API key to use Chutes models in chat.',
-      'Configure'
-    );
-    if (choice === 'Configure') {
-      await vscode.commands.executeCommand('chutes.manage');
+  /** Opens the API-key input box, deduping concurrent calls, and stores a valid key. */
+  private async requestApiKey(): Promise<string | undefined> {
+    if (!this.pendingKeyPrompt) {
+      this.pendingKeyPrompt = vscode.window.showInputBox({
+        title: 'Chutes AI API key',
+        prompt: 'Paste your Chutes API key (starts with "cpk_"). Get one at https://chutes.ai',
+        placeHolder: 'cpk_...',
+        password: true,
+        ignoreFocusOut: true
+      });
     }
+    let value: string | undefined;
+    try {
+      value = await this.pendingKeyPrompt;
+    } finally {
+      this.pendingKeyPrompt = undefined;
+    }
+    const trimmed = value?.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    await this.secrets.set(trimmed);
+    return trimmed;
   }
 }

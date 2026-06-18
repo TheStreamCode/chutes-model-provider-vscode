@@ -1,8 +1,8 @@
 {
   "name": "chutes-model-provider-vscode",
-  "displayName": "Chutes AI — Chat Model Provider (DeepSeek, Qwen, GLM, Kimi)",
-  "description": "Use Chutes.ai models in VS Code Chat. Models are discovered automatically, with streaming, tool calling (agent mode) and vision support.",
-  "version": "0.1.0",
+  "displayName": "Chutes AI Provider for GitHub Copilot Chat",
+  "description": "Integrate Chutes.ai open-source models (DeepSeek, Qwen, GLM, Kimi and more) into VS Code's GitHub Copilot Chat — auto-discovered, with streaming, tool calling and vision.",
+  "version": "0.2.0",
   "publisher": "mikesoft",
   "author": {
     "name": "Michael Gasperini",
