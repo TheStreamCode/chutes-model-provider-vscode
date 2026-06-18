@@ -4,13 +4,11 @@
 
 Create an account at [chutes.ai](https://chutes.ai) and generate an API key. Chutes keys start with `cpk_`.
 
-## 2. Configure the extension
+## 2. Add the provider and enter your key
 
-Run **`Chutes AI: Manage API Key`** from the Command Palette and paste your key. It is stored in VS Code SecretStorage (the OS keychain) — never in `settings.json`.
+Open VS Code's Chat view, open the model picker, and choose **Manage Models…** → **Chutes AI**. You are prompted to paste your API key directly. If you dismiss the box, just select **Chutes AI** again — it reopens every time until a key is saved.
 
-You can also reach this from the chat model picker: open the picker, choose **Manage Language Models**, select **Chutes AI**, then **Manage**.
-
-To change or remove the key later, run the same command and choose *Update* or *Clear*.
+You can also run **`Chutes AI: Manage API Key`** from the Command Palette at any time to set, update, or clear the key. The key is stored in VS Code SecretStorage (the OS keychain) — never in `settings.json`.
 
 ## 3. Pick a model
 
