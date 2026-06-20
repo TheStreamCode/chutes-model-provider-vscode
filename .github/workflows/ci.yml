@@ -21,7 +21,7 @@ jobs:
       - run: npm run package
       - name: Package VSIX
         run: npx @vscode/vsce package --out chutes-model-provider-vscode.vsix
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vsix
           path: chutes-model-provider-vscode.vsix
