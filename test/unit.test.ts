@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as vscode from 'vscode';
-import { isChatModel, applyUserFilter, toChatInformation } from '../src/modelMapping';
+import { isChatModel, applyUserFilter, toChatInformation, autoRouterInfo, AUTO_MODEL_ID } from '../src/modelMapping';
 import { convertMessages, convertTools, convertToolMode } from '../src/messageConverter';
 import { ChutesChatModelProvider } from '../src/provider';
 import { SecretStore } from '../src/secrets';
@@ -14,6 +14,7 @@ import { formatUsageMarkdown, formatQuotasMarkdown } from '../src/chatParticipan
 import { normalizeDashboardData } from '../src/usage/normalize';
 import type { DashboardData } from '../src/usage/types';
 import type { ChutesRawModel } from '../src/chutesClient';
+import { DEFAULT_ROUTER_ENDPOINT } from '../src/config';
 
 function model(partial: Partial<ChutesRawModel> & { id: string }): ChutesRawModel {
   return { input_modalities: ['text'], output_modalities: ['text'], ...partial };
@@ -67,6 +68,14 @@ test('toChatInformation caps output at context and tolerates missing metadata', 
   assert.equal(info.maxOutputTokens, 8000);
   assert.equal(info.capabilities.toolCalling, false);
   assert.equal(info.capabilities.imageInput, false);
+});
+
+test('autoRouterInfo describes the virtual router model', () => {
+  const info = autoRouterInfo();
+  assert.equal(info.id, AUTO_MODEL_ID);
+  assert.equal(info.id, 'model-router');
+  assert.equal(info.capabilities.toolCalling, true);
+  assert.equal(info.capabilities.imageInput, true);
 });
 
 test('convertMessages: plain user text', () => {
@@ -207,6 +216,56 @@ test('provider: concurrent selections are deduped to a single input box', async 
   ]);
   assert.ok(a.length > 0 && b.length > 0);
   assert.equal(prompts, 1);
+});
+
+// --- provider: virtual "Auto" router model (injection + routing) ---
+
+test('provider: lists the Auto model first when enabled (default)', async () => {
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), fakeClient(RAW));
+  const info = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  assert.equal(info[0].id, AUTO_MODEL_ID);
+  assert.equal(info.length, RAW.length + 1);
+});
+
+test('provider: omits the Auto model when autoRouterEnabled is false', async () => {
+  const original = vscode.workspace.getConfiguration;
+  vscode.workspace.getConfiguration = (() => ({
+    get: (key: string) => (key === 'autoRouterEnabled' ? false : undefined)
+  })) as never;
+  try {
+    const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), fakeClient(RAW));
+    const info = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+    assert.ok(info.every((m) => m.id !== AUTO_MODEL_ID));
+    assert.equal(info.length, RAW.length);
+  } finally {
+    vscode.workspace.getConfiguration = original;
+  }
+});
+
+test('provider: Auto model streams via the router endpoint; normal models do not', async () => {
+  const captured: Array<string | undefined> = [];
+  const client = {
+    listModels: async () => RAW,
+    async *streamChatCompletion(_k: string, _b: unknown, _s: unknown, endpointOverride?: string) {
+      captured.push(endpointOverride);
+    }
+  } as never;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+  const progress = { report() {} } as never;
+  const token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) } as never;
+  const msgs = [userMsg(new vscode.LanguageModelTextPart('hi'))];
+
+  await provider.provideLanguageModelChatResponse(autoRouterInfo(), msgs, {} as never, progress, token);
+  await provider.provideLanguageModelChatResponse(
+    toChatInformation(model({ id: 'a/Chat-One' })),
+    msgs,
+    {} as never,
+    progress,
+    token
+  );
+
+  assert.equal(captured[0], DEFAULT_ROUTER_ENDPOINT);
+  assert.equal(captured[1], undefined);
 });
 
 // --- usage chat participant: markdown formatting + normalization ---

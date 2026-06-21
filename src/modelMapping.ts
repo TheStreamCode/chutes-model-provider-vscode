@@ -3,6 +3,32 @@ import { ChutesRawModel } from './chutesClient';
 
 const FALLBACK_CONTEXT = 32768;
 
+/** Reserved model id of Chutes' native router; selecting it delegates routing + fallback. */
+export const AUTO_MODEL_ID = 'model-router';
+
+/**
+ * Synthetic descriptor for the virtual "Chutes Auto" model. Selecting it sends the
+ * request to Chutes' native router, which classifies the prompt and fails over
+ * automatically when a model is cold/unavailable. Context limits are a conservative
+ * estimate since the routed target varies per request.
+ */
+export function autoRouterInfo(): vscode.LanguageModelChatInformation {
+  return {
+    id: AUTO_MODEL_ID,
+    name: 'Auto (router)',
+    family: 'Chutes',
+    version: '1.0',
+    maxInputTokens: 131072,
+    maxOutputTokens: FALLBACK_CONTEXT,
+    tooltip: 'Chutes native router — automatic model selection + cold/unavailable fallback',
+    detail: 'Auto · routing + fallback nativo',
+    capabilities: {
+      toolCalling: true,
+      imageInput: true
+    }
+  };
+}
+
 /**
  * Keeps only models usable in VS Code chat: text in, text out. Excludes
  * image-generation, embedding and audio models. Since we already query the

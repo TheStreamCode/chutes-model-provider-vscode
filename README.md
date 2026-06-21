@@ -26,6 +26,7 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 ## ✨ Features
 
 - **Automatic model discovery** — the full Chutes catalogue is fetched from the API; nothing to maintain by hand.
+- **Auto model with fallback** — a virtual **Auto (router)** model delegates selection to Chutes' native router, which picks a model per task and fails over automatically when one is cold or unavailable.
 - **Native chat integration** — models appear in **Ask**, **Edit** and **Agent** modes; tool-capable models light up agent mode.
 - **Vision** — models that accept image input can read images attached to a chat.
 - **Streaming** — responses stream token by token and honour cancellation.
@@ -49,6 +50,8 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 | `chutes.endpoint` | `https://llm.chutes.ai/v1` | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints. |
 | `chutes.modelFilter` | _(empty)_ | Restrict which models appear. Comma-separated terms matched against the model id as a case-insensitive substring or regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Empty shows all chat models. |
 | `chutes.requestTimeoutMs` | `15000` | Timeout (ms) for fetching the model list. Does not limit streaming responses. |
+| `chutes.autoRouterEnabled` | `true` | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native router. |
+| `chutes.routerEndpoint` | `https://model-router-ten.vercel.app/v1` | Base URL of Chutes' native router, used by the **Auto (router)** model. Change only for a self-hosted router. |
 
 ## Commands
 
@@ -65,6 +68,12 @@ Type **`@chutes`** in the chat input to check your Chutes account without leavin
 - **`@chutes /quota`** — per-model quotas.
 
 It uses the same API key you configured for the provider. Note: VS Code does not let third-party providers display live spend inside Copilot's own usage UI, so this surfaces it as an on-demand chat reply.
+
+## Auto model (router)
+
+Pick **Auto (router)** from the model list to stop worrying about which specific model is currently warm. Your prompt is sent to Chutes' native model router, which classifies it (general, reasoning, programming, vision…), routes it to a suitable model, and **fails over automatically** if that model is cold or unavailable. This is handy because models on Chutes warm up and cool down over time, and a cold model can otherwise return an error.
+
+Selection and fallback are performed by Chutes' router, not by this extension. It is enabled by default; turn it off with `chutes.autoRouterEnabled`, or point it at a self-hosted router with `chutes.routerEndpoint`.
 
 ## Privacy
 

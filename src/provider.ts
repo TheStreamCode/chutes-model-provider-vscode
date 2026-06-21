@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { SecretStore } from './secrets';
 import { ChutesClient, ChutesApiError } from './chutesClient';
 import { getConfig } from './config';
-import { isChatModel, applyUserFilter, toChatInformation } from './modelMapping';
+import { isChatModel, applyUserFilter, toChatInformation, autoRouterInfo, AUTO_MODEL_ID } from './modelMapping';
 import { convertMessages, convertTools, convertToolMode, messageToText } from './messageConverter';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -60,13 +60,15 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     }
 
     try {
+      const cfg = getConfig();
       const raw = await this.client.listModels(apiKey);
-      const filter = getConfig().modelFilter;
-      const models = applyUserFilter(raw.filter(isChatModel), filter)
+      const models = applyUserFilter(raw.filter(isChatModel), cfg.modelFilter)
         .map(toChatInformation)
         .sort((a, b) => a.id.localeCompare(b.id));
-      this.cache = { at: Date.now(), models };
-      return models;
+      // Pin the virtual "Auto" entry at the top so it is easy to find in the picker.
+      const withAuto = cfg.autoRouterEnabled ? [autoRouterInfo(), ...models] : models;
+      this.cache = { at: Date.now(), models: withAuto };
+      return withAuto;
     } catch (err) {
       if (!options.silent) {
         const msg = err instanceof ChutesApiError ? err.message : String(err);
@@ -87,6 +89,11 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     if (!apiKey) {
       throw new Error('Chutes AI: no API key configured. Run "Chutes AI: Manage API Key".');
     }
+
+    // The virtual "Auto" model routes to Chutes' native router endpoint instead of
+    // the configured one; everything else (OpenAI-compatible body, SSE) is identical.
+    const isAuto = model.id === AUTO_MODEL_ID;
+    const endpointOverride = isAuto ? getConfig().routerEndpoint : undefined;
 
     const body: Record<string, unknown> = {
       model: model.id,
@@ -114,7 +121,7 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
 
     try {
-      for await (const delta of this.client.streamChatCompletion(apiKey, body, controller.signal)) {
+      for await (const delta of this.client.streamChatCompletion(apiKey, body, controller.signal, endpointOverride)) {
         if (token.isCancellationRequested) {
           break;
         }

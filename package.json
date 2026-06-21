@@ -2,7 +2,7 @@
   "name": "chutes-model-provider-vscode",
   "displayName": "Chutes AI Provider for GitHub Copilot Chat",
   "description": "Integrate Chutes.ai open-source models (DeepSeek, Qwen, GLM, Kimi and more) into VS Code's GitHub Copilot Chat — auto-discovered, with streaming, tool calling and vision.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "mikesoft",
   "author": {
     "name": "Michael Gasperini",
@@ -109,6 +109,16 @@
           "default": 15000,
           "minimum": 1000,
           "markdownDescription": "Timeout (ms) for fetching the model list. Does not limit streaming chat responses."
+        },
+        "chutes.autoRouterEnabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show a virtual **Chutes Auto** model that delegates model selection and automatic fallback (when a model is cold or unavailable) to Chutes' native model router."
+        },
+        "chutes.routerEndpoint": {
+          "type": "string",
+          "default": "https://model-router-ten.vercel.app/v1",
+          "markdownDescription": "Base URL of Chutes' native OpenAI-compatible model router, used by the **Chutes Auto** model. Change only for a self-hosted router."
         }
       }
     }

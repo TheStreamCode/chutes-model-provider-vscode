@@ -59,13 +59,15 @@ export class ChutesClient {
   /**
    * Streams a chat completion as OpenAI-style SSE, yielding each delta.
    * The caller's AbortSignal (wired to the VS Code CancellationToken) stops the request.
+   * `endpointOverride` targets a different base URL (e.g. the native model router).
    */
   async *streamChatCompletion(
     apiKey: string,
     body: Record<string, unknown>,
-    signal: AbortSignal
+    signal: AbortSignal,
+    endpointOverride?: string
   ): AsyncGenerator<ChatCompletionDelta> {
-    const { endpoint } = this.config();
+    const endpoint = endpointOverride ?? this.config().endpoint;
     const res = await fetch(`${endpoint}/chat/completions`, {
       method: 'POST',
       headers: {

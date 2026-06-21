@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.4.0
+
+- Added an **Auto (router)** model that delegates model selection and automatic fallback to Chutes' native model router. Pick **Auto (router)** in the model list and your prompt is classified and routed to a suitable model; if that model is cold or unavailable, the router fails over automatically — no manual switching. Controlled by the new `chutes.autoRouterEnabled` (on by default) and `chutes.routerEndpoint` settings.
+
 ## 0.3.0
 
 - Added a **`@chutes` chat participant** for usage monitoring inside the chat panel: `@chutes /usage` shows spend for the current billing windows (monthly cap, 4-hour window) and your daily request quota; `@chutes /quota` shows per-model quotas. It reuses the API key already configured for the provider.
