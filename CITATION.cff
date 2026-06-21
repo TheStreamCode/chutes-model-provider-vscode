@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Chutes Model Provider for VS Code"
+authors:
+  - family-names: Gasperini
+    given-names: Michael
+url: "https://github.com/TheStreamCode/chutes-model-provider-vscode"
+version: "0.3.0"
+license: MIT
