@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## 0.4.1
+
 ### Changed
 
 - Upgraded TypeScript from `^6.0.3` to `^7.0.0` (resolved 7.0.2). No source or configuration changes were required.
