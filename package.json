@@ -2,7 +2,7 @@
   "name": "chutes-model-provider-vscode",
   "displayName": "Chutes AI Provider for GitHub Copilot Chat",
   "description": "Integrate Chutes.ai open-source models (DeepSeek, Qwen, GLM, Kimi and more) into VS Code's GitHub Copilot Chat — auto-discovered, with streaming, tool calling and vision.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "mikesoft",
   "author": {
     "name": "Michael Gasperini",
