@@ -79,6 +79,8 @@ Selection and fallback are performed by Chutes' router, not by this extension. I
 
 Your prompts and attachments are sent to the Chutes API to generate responses — that is the purpose of the extension. The API key is stored in VS Code SecretStorage and is never written to settings or logs. The extension collects no telemetry, analytics, or personal data.
 
+Use of the Chutes service is subject to the official [Chutes Terms of Service](https://chutes.ai/terms) and [Chutes Privacy Policy](https://chutes.ai/privacy).
+
 ## 🛠️ Development
 
 ```bash
@@ -98,7 +100,7 @@ Press `F5` to launch an Extension Development Host. Run `npm test` for the unit 
 
 ## Trademarks
 
-Chutes, the Chutes logo, and related names and marks are trademarks of their respective owner and are used with permission. This extension's own source code is licensed under the MIT License.
+This independently developed extension is not affiliated with, sponsored by, endorsed by, or approved by Chutes. Chutes, the Chutes logo, and all other third-party names, logos, services, models, and marks remain the property of their respective owners. The MIT License covers only project-owned code and materials; it does not license those third-party rights. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Support & License
 
