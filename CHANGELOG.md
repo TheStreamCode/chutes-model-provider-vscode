@@ -19,6 +19,11 @@
 - Recorded the historical release dates in this changelog and expanded the agent guide with the release,
   packaging, and publishing procedure.
 
+### Security
+
+- Escaped Markdown metacharacters, including backslashes and table separators, in one pass so API-provided usage
+  labels cannot create ambiguous escaping sequences.
+
 ## 0.4.3 - 2026-08-01
 
 ### Fixed

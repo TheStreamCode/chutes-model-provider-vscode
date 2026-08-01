@@ -491,10 +491,10 @@ test('usage markdown escapes API-provided table and inline markdown', () => {
       paygDiscountPercent: null
     },
     windows: [],
-    quotas: [{ modelLabel: 'model|unsafe', quota: 10, lastUpdated: null }]
+    quotas: [{ modelLabel: String.raw`model\|unsafe`, quota: 10, lastUpdated: null }]
   };
   assert.ok(formatUsageMarkdown(data).includes('Pro \\*preview\\*'));
-  assert.ok(formatQuotasMarkdown(data).includes('model\\|unsafe'));
+  assert.ok(formatQuotasMarkdown(data).includes(String.raw`model\\\|unsafe`));
 });
 
 test('normalizeDashboardData parses spend windows and derives the plan', () => {

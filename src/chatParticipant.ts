@@ -111,12 +111,9 @@ function formatPercent(percent: number | null): string {
 }
 
 function escapeInlineMarkdown(value: string): string {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/([`*_{}[\]<>])/g, '\\$1')
-    .replace(/[\r\n]+/g, ' ');
+  return value.replace(/[\r\n]+/g, ' ').replace(/([\\`*_{}[\]<>])/g, '\\$1');
 }
 
 function escapeTableCell(value: string): string {
-  return escapeInlineMarkdown(value).replace(/\|/g, '\\|');
+  return value.replace(/[\r\n]+/g, ' ').replace(/([\\|`*_{}[\]<>])/g, '\\$1');
 }
