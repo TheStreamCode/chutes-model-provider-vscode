@@ -21,7 +21,7 @@ export function autoRouterInfo(): vscode.LanguageModelChatInformation {
     maxInputTokens: 131072,
     maxOutputTokens: FALLBACK_CONTEXT,
     tooltip: 'Chutes native router — automatic model selection + cold/unavailable fallback',
-    detail: 'Auto · routing + fallback nativo',
+    detail: 'Auto · native routing + fallback',
     capabilities: {
       toolCalling: true,
       imageInput: true

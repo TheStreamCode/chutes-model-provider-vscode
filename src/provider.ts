@@ -153,6 +153,12 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       cancel.dispose();
     }
 
+    // A cancelled stream leaves tool-call fragments half-assembled. Emitting them would
+    // either throw on truncated JSON or ask VS Code to run a tool the user just stopped.
+    if (token.isCancellationRequested || controller.signal.aborted) {
+      return;
+    }
+
     for (const [index, call] of Array.from(toolCalls.entries()).sort(([a], [b]) => a - b)) {
       if (!call.name) {
         continue;

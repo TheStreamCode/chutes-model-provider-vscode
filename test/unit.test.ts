@@ -142,6 +142,9 @@ test('autoRouterInfo describes the virtual router model', () => {
   assert.equal(info.id, 'model-router');
   assert.equal(info.capabilities.toolCalling, true);
   assert.equal(info.capabilities.imageInput, true);
+  // Picker copy is user-facing: keep it ASCII-safe English like every other label.
+  assert.equal(info.name, 'Auto (router)');
+  assert.match(info.detail ?? '', /^Auto · native routing \+ fallback$/);
 });
 
 test('convertMessages: plain user text', () => {
@@ -358,6 +361,41 @@ test('provider: malformed tool arguments fail closed', async () => {
     provider.provideLanguageModelChatResponse(autoRouterInfo(), [], {} as never, progress, token),
     /invalid arguments returned for tool/
   );
+});
+
+test('provider: cancelling mid-stream drops half-assembled tool calls', async () => {
+  let cancelled = false;
+  const listeners: Array<() => void> = [];
+  const client = {
+    listModels: async () => RAW,
+    async *streamChatCompletion() {
+      // Truncated JSON, exactly what a stream cut short by the user looks like.
+      yield {
+        tool_calls: [{ index: 0, id: 'call_1', function: { name: 'dangerous_tool', arguments: '{"path": "sr' } }]
+      };
+      cancelled = true;
+      for (const listener of listeners) {
+        listener();
+      }
+      yield { content: 'ignored' };
+    }
+  } as never;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+  const reported: unknown[] = [];
+  const progress = { report: (part: unknown) => reported.push(part) } as never;
+  const token = {
+    get isCancellationRequested() {
+      return cancelled;
+    },
+    onCancellationRequested: (listener: () => void) => {
+      listeners.push(listener);
+      return { dispose() {} };
+    }
+  } as never;
+
+  // Must resolve (no "invalid arguments" error) and must not run the tool.
+  await provider.provideLanguageModelChatResponse(autoRouterInfo(), [], {} as never, progress, token);
+  assert.ok(reported.every((part) => !(part instanceof vscode.LanguageModelToolCallPart)));
 });
 
 // --- usage chat participant: markdown formatting + normalization ---
