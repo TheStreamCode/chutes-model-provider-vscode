@@ -18,9 +18,11 @@ export function createUsageChatHandler(secrets: SecretStore): vscode.ChatRequest
     }
 
     stream.progress('Fetching Chutes usage…');
+    const controller = new AbortController();
+    const cancellation = token.onCancellationRequested(() => controller.abort());
     let data: DashboardData;
     try {
-      const payload = await new ChutesAccountClient(apiKey).getDashboardPayload();
+      const payload = await new ChutesAccountClient(apiKey).getDashboardPayload(controller.signal);
       if (token.isCancellationRequested) {
         return {};
       }
@@ -32,9 +34,16 @@ export function createUsageChatHandler(secrets: SecretStore): vscode.ChatRequest
         payload.invocationStatsLlm
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      stream.markdown(`Could not load Chutes usage (${message}).\n\nMake sure your API key is valid and has account access.`);
+      if (token.isCancellationRequested || controller.signal.aborted) {
+        return {};
+      }
+      const message = escapeInlineMarkdown(err instanceof Error ? err.message : String(err));
+      stream.markdown(
+        `Could not load Chutes usage (${message}).\n\nMake sure your API key is valid and has account access.`
+      );
       return {};
+    } finally {
+      cancellation.dispose();
     }
 
     stream.markdown(request.command === 'quota' ? formatQuotasMarkdown(data) : formatUsageMarkdown(data));
@@ -48,7 +57,7 @@ export function formatUsageMarkdown(data: DashboardData): string {
   const plan = data.plan;
   if (plan?.planName) {
     const price = plan.monthlyPriceUsd != null ? ` · $${plan.monthlyPriceUsd}/mo` : '';
-    lines.push(`**Plan:** ${plan.planName}${price}`);
+    lines.push(`**Plan:** ${escapeInlineMarkdown(plan.planName)}${price}`);
   }
   lines.push('');
 
@@ -61,7 +70,7 @@ export function formatUsageMarkdown(data: DashboardData): string {
   lines.push('| --- | --- | --- | --- | --- |');
   for (const window of data.windows) {
     lines.push(
-      `| ${window.label} | ${formatValue(window.unit, window.used)} | ${formatLimit(window)} | ${formatValue(window.unit, window.remaining)} | ${formatPercent(window.percentUsed)} |`
+      `| ${escapeTableCell(window.label)} | ${formatValue(window.unit, window.used)} | ${formatLimit(window)} | ${formatValue(window.unit, window.remaining)} | ${formatPercent(window.percentUsed)} |`
     );
   }
   lines.push('');
@@ -79,8 +88,9 @@ export function formatQuotasMarkdown(data: DashboardData): string {
   lines.push('| Model | Daily quota (requests) |');
   lines.push('| --- | --- |');
   for (const quota of data.quotas) {
-    const value = quota.quota === null ? '—' : quota.quota === 0 ? 'Unlimited' : Math.round(quota.quota).toLocaleString('en-US');
-    lines.push(`| ${quota.modelLabel} | ${value} |`);
+    const value =
+      quota.quota === null ? '—' : quota.quota === 0 ? 'Unlimited' : Math.round(quota.quota).toLocaleString('en-US');
+    lines.push(`| ${escapeTableCell(quota.modelLabel)} | ${value} |`);
   }
   return lines.join('\n');
 }
@@ -98,4 +108,15 @@ function formatLimit(window: UsageWindow): string {
 
 function formatPercent(percent: number | null): string {
   return percent === null ? '—' : `${Math.round(percent)}%`;
+}
+
+function escapeInlineMarkdown(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/([`*_{}[\]<>])/g, '\\$1')
+    .replace(/[\r\n]+/g, ' ');
+}
+
+function escapeTableCell(value: string): string {
+  return escapeInlineMarkdown(value).replace(/\|/g, '\\|');
 }

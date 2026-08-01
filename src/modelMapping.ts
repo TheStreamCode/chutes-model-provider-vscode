@@ -35,8 +35,8 @@ export function autoRouterInfo(): vscode.LanguageModelChatInformation {
  * `llm.chutes.ai` endpoint the list is mostly LLMs — this is a safety net.
  */
 export function isChatModel(m: ChutesRawModel): boolean {
-  const input = m.input_modalities ?? ['text'];
-  const output = m.output_modalities ?? ['text'];
+  const input = stringArrayOrDefault(m.input_modalities, ['text']);
+  const output = stringArrayOrDefault(m.output_modalities, ['text']);
   return input.includes('text') && output.includes('text');
 }
 
@@ -67,18 +67,19 @@ export function applyUserFilter(models: ChutesRawModel[], filter: string): Chute
 
 /** Maps a Chutes model to the VS Code chat model descriptor. */
 export function toChatInformation(m: ChutesRawModel): vscode.LanguageModelChatInformation {
-  const features = m.supported_features ?? [];
-  const context = m.context_length ?? m.max_model_len ?? FALLBACK_CONTEXT;
-  const maxOutput = Math.min(m.max_output_length ?? context, context);
+  const features = stringArrayOrDefault(m.supported_features, []);
+  const context = positiveInteger(m.context_length) ?? positiveInteger(m.max_model_len) ?? FALLBACK_CONTEXT;
+  const maxOutput = Math.min(positiveInteger(m.max_output_length) ?? context, context);
 
   const slash = m.id.lastIndexOf('/');
   const family = slash > 0 ? m.id.slice(0, slash) : 'chutes';
   const name = slash > 0 ? m.id.slice(slash + 1) : m.id;
 
   const detail: string[] = [`${Math.round(context / 1000)}k ctx`];
-  if (typeof m.pricing?.prompt === 'number') {
-    const completion = m.pricing.completion ?? m.pricing.prompt;
-    detail.push(`$${m.pricing.prompt}/$${completion} per 1M`);
+  const promptPrice = nonNegativeNumber(m.pricing?.prompt);
+  if (promptPrice !== undefined) {
+    const completion = nonNegativeNumber(m.pricing?.completion) ?? promptPrice;
+    detail.push(`$${promptPrice}/$${completion} per 1M`);
   }
   if (m.confidential_compute) {
     detail.push('TEE');
@@ -88,14 +89,26 @@ export function toChatInformation(m: ChutesRawModel): vscode.LanguageModelChatIn
     id: m.id,
     name,
     family,
-    version: m.quantization ?? '1.0',
+    version: typeof m.quantization === 'string' && m.quantization ? m.quantization : '1.0',
     maxInputTokens: context,
     maxOutputTokens: maxOutput,
     tooltip: m.id,
     detail: detail.join(' · '),
     capabilities: {
       toolCalling: features.includes('tools'),
-      imageInput: (m.input_modalities ?? []).includes('image')
+      imageInput: stringArrayOrDefault(m.input_modalities, []).includes('image')
     }
   };
+}
+
+function stringArrayOrDefault(value: unknown, fallback: string[]): string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : fallback;
+}
+
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : undefined;
+}
+
+function nonNegativeNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 }

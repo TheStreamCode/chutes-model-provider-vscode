@@ -27,14 +27,20 @@ export interface ChatCompletionDelta {
 }
 
 export class ChutesApiError extends Error {
-  constructor(message: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly status?: number
+  ) {
     super(message);
     this.name = 'ChutesApiError';
   }
 }
 
 export class ChutesClient {
-  constructor(private readonly config: () => ChutesConfig) {}
+  constructor(
+    private readonly config: () => ChutesConfig,
+    private readonly request: typeof fetch = globalThis.fetch
+  ) {}
 
   /** Fetches the full model catalogue. Aborts after the configured timeout. */
   async listModels(apiKey: string): Promise<ChutesRawModel[]> {
@@ -42,15 +48,15 @@ export class ChutesClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
     try {
-      const res = await fetch(`${endpoint}/models`, {
+      const res = await this.request(`${endpoint}/models`, {
         headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
         signal: controller.signal
       });
       if (!res.ok) {
         throw new ChutesApiError(await describeError(res, 'GET /models'), res.status);
       }
-      const json = (await res.json()) as { data?: ChutesRawModel[] };
-      return Array.isArray(json?.data) ? json.data : [];
+      const json = (await res.json()) as { data?: unknown };
+      return Array.isArray(json?.data) ? json.data.filter(isRawModel) : [];
     } finally {
       clearTimeout(timer);
     }
@@ -68,7 +74,7 @@ export class ChutesClient {
     endpointOverride?: string
   ): AsyncGenerator<ChatCompletionDelta> {
     const endpoint = endpointOverride ?? this.config().endpoint;
-    const res = await fetch(`${endpoint}/chat/completions`, {
+    const res = await this.request(`${endpoint}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -98,30 +104,96 @@ export class ChutesClient {
         // Keep the last (possibly partial) line in the buffer.
         buffer = lines.pop() ?? '';
         for (const rawLine of lines) {
-          const line = rawLine.trim();
-          if (!line || line.startsWith(':') || !line.startsWith('data:')) {
-            continue;
-          }
-          const data = line.slice('data:'.length).trim();
-          if (data === '[DONE]') {
+          const event = parseStreamLine(rawLine);
+          if (event?.done) {
             return;
           }
-          let parsed: { choices?: Array<{ delta?: ChatCompletionDelta }> };
-          try {
-            parsed = JSON.parse(data);
-          } catch {
-            continue; // ignore keep-alives / malformed fragments
-          }
-          const delta = parsed.choices?.[0]?.delta;
-          if (delta) {
-            yield delta;
+          if (event?.delta) {
+            yield event.delta;
           }
         }
+      }
+
+      // Flush the decoder and process a final event even when the server closes
+      // the stream without a trailing newline.
+      buffer += decoder.decode();
+      const finalEvent = parseStreamLine(buffer);
+      if (finalEvent?.delta) {
+        yield finalEvent.delta;
       }
     } finally {
       reader.releaseLock();
     }
   }
+}
+
+function isRawModel(value: unknown): value is ChutesRawModel {
+  return isRecord(value) && typeof value.id === 'string' && value.id.trim().length > 0;
+}
+
+function parseStreamLine(
+  rawLine: string
+): { done: true; delta?: never } | { done: false; delta: ChatCompletionDelta } | undefined {
+  const line = rawLine.trim();
+  if (!line || line.startsWith(':') || !line.startsWith('data:')) {
+    return undefined;
+  }
+
+  const data = line.slice('data:'.length).trim();
+  if (data === '[DONE]') {
+    return { done: true };
+  }
+
+  try {
+    const payload = JSON.parse(data) as unknown;
+    if (!isRecord(payload) || !Array.isArray(payload.choices) || !isRecord(payload.choices[0])) {
+      return undefined;
+    }
+    const delta = normalizeDelta(payload.choices[0].delta);
+    return delta ? { done: false, delta } : undefined;
+  } catch {
+    return undefined; // ignore keep-alives and malformed fragments
+  }
+}
+
+function normalizeDelta(value: unknown): ChatCompletionDelta | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const delta: ChatCompletionDelta = {};
+  if (typeof value.content === 'string') {
+    delta.content = value.content;
+  }
+  if (Array.isArray(value.tool_calls)) {
+    const toolCalls: NonNullable<ChatCompletionDelta['tool_calls']> = [];
+    for (const item of value.tool_calls) {
+      if (!isRecord(item) || typeof item.index !== 'number' || !Number.isInteger(item.index) || item.index < 0) {
+        continue;
+      }
+      const fn = isRecord(item.function) ? item.function : undefined;
+      toolCalls.push({
+        index: item.index,
+        id: typeof item.id === 'string' ? item.id : undefined,
+        type: typeof item.type === 'string' ? item.type : undefined,
+        function: fn
+          ? {
+              name: typeof fn.name === 'string' ? fn.name : undefined,
+              arguments: typeof fn.arguments === 'string' ? fn.arguments : undefined
+            }
+          : undefined
+      });
+    }
+    if (toolCalls.length > 0) {
+      delta.tool_calls = toolCalls;
+    }
+  }
+
+  return delta.content !== undefined || delta.tool_calls !== undefined ? delta : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function describeError(res: Response, op: string): Promise<string> {

@@ -153,17 +153,20 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       cancel.dispose();
     }
 
-    for (const call of toolCalls.values()) {
+    for (const [index, call] of Array.from(toolCalls.entries()).sort(([a], [b]) => a - b)) {
       if (!call.name) {
         continue;
       }
-      let input: object = {};
+      let input: unknown = {};
       try {
         input = call.args ? JSON.parse(call.args) : {};
       } catch {
-        input = {};
+        throw new Error(`Chutes AI: invalid arguments returned for tool "${call.name}".`);
       }
-      progress.report(new vscode.LanguageModelToolCallPart(call.id || call.name, call.name, input));
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error(`Chutes AI: non-object arguments returned for tool "${call.name}".`);
+      }
+      progress.report(new vscode.LanguageModelToolCallPart(call.id || `chutes-tool-${index}`, call.name, input));
     }
   }
 

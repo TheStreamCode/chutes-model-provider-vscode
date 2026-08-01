@@ -17,6 +17,11 @@ export function activate(context: vscode.ExtensionContext): void {
     provider,
     vscode.lm.registerLanguageModelChatProvider('chutes', provider),
     usageParticipant,
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('chutes')) {
+        provider.invalidate();
+      }
+    }),
     vscode.commands.registerCommand('chutes.manage', () => manageApiKey(secrets, provider)),
     vscode.commands.registerCommand('chutes.refreshModels', () => {
       provider.invalidate();

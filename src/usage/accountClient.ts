@@ -12,32 +12,36 @@ export interface DashboardPayload {
   quotaUsageMe: JsonContainer | null;
   quotaUsageFallback: JsonContainer | null;
   invocationStatsLlm: JsonContainer | null;
-  pricing: JsonContainer | null;
 }
 
 export class ChutesAccountClient {
   constructor(private readonly apiKey: string) {}
 
   /** Fetches the account/usage endpoints needed to summarize spend and quotas. */
-  async getDashboardPayload(): Promise<DashboardPayload> {
-    const [subscriptionUsage, quotas, pricing, quotaUsageMe, invocationStatsLlm] = await Promise.all([
-      this.getJsonContainer('/users/me/subscription_usage'),
-      this.getJsonContainer('/users/me/quotas'),
-      this.getJsonContainer('/pricing').catch(() => null),
-      this.getJsonContainer('/users/me/quota_usage/me').catch(() => null),
-      this.getJsonContainer('/invocations/stats/llm').catch(() => null)
+  async getDashboardPayload(signal?: AbortSignal): Promise<DashboardPayload> {
+    const [subscriptionUsage, quotas, quotaUsageMe, invocationStatsLlm] = await Promise.all([
+      this.getJsonContainer('/users/me/subscription_usage', signal),
+      this.getJsonContainer('/users/me/quotas', signal),
+      this.getJsonContainer('/users/me/quota_usage/me', signal).catch(() => null),
+      this.getJsonContainer('/invocations/stats/llm', signal).catch(() => null)
     ]);
-    const quotaUsageFallback = hasQuotaUsageData(quotaUsageMe) ? null : await this.getQuotaUsagePayload(quotas);
+    const quotaUsageFallback = hasQuotaUsageData(quotaUsageMe) ? null : await this.getQuotaUsagePayload(quotas, signal);
 
     if (!isJsonObject(subscriptionUsage)) {
       throw new Error('Unexpected API response shape for /users/me/subscription_usage');
     }
 
-    return { subscriptionUsage, quotas, quotaUsageMe, quotaUsageFallback, invocationStatsLlm, pricing };
+    return { subscriptionUsage, quotas, quotaUsageMe, quotaUsageFallback, invocationStatsLlm };
   }
 
-  private async getJsonContainer(path: string): Promise<JsonContainer> {
+  private async getJsonContainer(path: string, signal?: AbortSignal): Promise<JsonContainer> {
     const controller = new AbortController();
+    const abort = () => controller.abort(signal?.reason);
+    if (signal?.aborted) {
+      abort();
+    } else {
+      signal?.addEventListener('abort', abort, { once: true });
+    }
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -55,10 +59,11 @@ export class ChutesAccountClient {
       return json;
     } finally {
       clearTimeout(timeout);
+      signal?.removeEventListener('abort', abort);
     }
   }
 
-  private async getQuotaUsagePayload(quotas: JsonContainer): Promise<JsonContainer | null> {
+  private async getQuotaUsagePayload(quotas: JsonContainer, signal?: AbortSignal): Promise<JsonContainer | null> {
     const chuteIds = getQuotaUsageChuteIds(quotas);
     if (chuteIds.length === 0) {
       return null;
@@ -66,7 +71,7 @@ export class ChutesAccountClient {
     const entries = await Promise.all(
       chuteIds.map(async (chuteId) => {
         const path = `/users/me/quota_usage/${encodePathSegment(chuteId)}`;
-        const payload = await this.getJsonContainer(path).catch(() => null);
+        const payload = await this.getJsonContainer(path, signal).catch(() => null);
         return payload === null ? null : ([chuteId, payload] as const);
       })
     );

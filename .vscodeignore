@@ -1,4 +1,6 @@
 .vscode/**
+.prettierignore
+AGENTS.md
 src/**
 test/**
 node_modules/**
@@ -6,6 +8,7 @@ out/**
 **/*.ts
 **/*.map
 esbuild.js
+prettier.config.cjs
 tsconfig.json
 .gitignore
 .editorconfig

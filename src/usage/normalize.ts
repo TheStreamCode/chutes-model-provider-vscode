@@ -148,7 +148,11 @@ export function normalizeQuotas(payload: JsonContainer): QuotaEntry[] {
     .filter((item: JsonObject | null): item is JsonObject => item !== null)
     .map((item: JsonObject) => ({
       modelLabel:
-        asString(item.model) ?? asString(item.model_label) ?? asString(item.label) ?? asString(item.name) ?? 'All Models',
+        asString(item.model) ??
+        asString(item.model_label) ??
+        asString(item.label) ??
+        asString(item.name) ??
+        'All Models',
       quota: asNumber(item.quota) ?? asNumber(item.limit),
       lastUpdated: asString(item.last_updated) ?? asString(item.updated_at) ?? null
     }));
@@ -375,7 +379,10 @@ function countUsageSignals(payload: JsonObject): number {
   ].reduce((score, key) => score + (payload[key] !== undefined ? 1 : 0), 0);
 }
 
-function findBestUsageObject(payload: JsonObject, seen = new Set<JsonObject>()): { object: JsonObject; score: number } | null {
+function findBestUsageObject(
+  payload: JsonObject,
+  seen = new Set<JsonObject>()
+): { object: JsonObject; score: number } | null {
   if (seen.has(payload)) {
     return null;
   }
@@ -437,7 +444,12 @@ function computePercent(used: number | null, limit: number | null): number | nul
   return (used / limit) * 100;
 }
 
-function pickNumber(raw: JsonObject | null, payload: JsonObject, aliases: string[], nestedKeys: string | string[]): number | null {
+function pickNumber(
+  raw: JsonObject | null,
+  payload: JsonObject,
+  aliases: string[],
+  nestedKeys: string | string[]
+): number | null {
   if (raw) {
     const nestedKeyList = Array.isArray(nestedKeys) ? nestedKeys : [nestedKeys];
     for (const nestedKey of nestedKeyList) {
@@ -456,7 +468,12 @@ function pickNumber(raw: JsonObject | null, payload: JsonObject, aliases: string
   return null;
 }
 
-function pickString(raw: JsonObject | null, payload: JsonObject, aliases: string[], nestedKeys: string | string[]): string | null {
+function pickString(
+  raw: JsonObject | null,
+  payload: JsonObject,
+  aliases: string[],
+  nestedKeys: string | string[]
+): string | null {
   if (raw) {
     const nestedKeyList = Array.isArray(nestedKeys) ? nestedKeys : [nestedKeys];
     for (const nestedKey of nestedKeyList) {

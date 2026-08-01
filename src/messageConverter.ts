@@ -8,9 +8,7 @@ export interface OpenAIMessage {
   tool_call_id?: string;
 }
 
-type OpenAIContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } };
+type OpenAIContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
 
 interface OpenAIToolCall {
   id: string;
@@ -76,9 +74,7 @@ export function convertMessages(messages: readonly vscode.LanguageModelChatReque
       const onlyText = contentParts.every((p) => p.type === 'text');
       out.push({
         role: 'user',
-        content: onlyText
-          ? contentParts.map((p) => (p as { text: string }).text).join('')
-          : contentParts
+        content: onlyText ? contentParts.map((p) => (p as { text: string }).text).join('') : contentParts
       });
     }
   }

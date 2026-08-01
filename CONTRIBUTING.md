@@ -10,9 +10,9 @@ Thanks for your interest in improving Chutes AI — Chat Model Provider.
 
 ## Development setup
 
-1. Install dependencies:
+1. Install the exact dependency set from the lockfile:
    ```bash
-   npm install
+   npm ci
    ```
 2. Build the extension:
    ```bash
@@ -21,6 +21,10 @@ Thanks for your interest in improving Chutes AI — Chat Model Provider.
 3. Run the unit tests:
    ```bash
    npm test
+   ```
+4. Run the complete local quality gate:
+   ```bash
+   npm run check
    ```
 
 ## Running the extension locally
@@ -41,6 +45,7 @@ CHUTES_KEY=cpk_... npm run test:live
 
 - Keep changes focused and minimal; prefer small fixes over broad refactors.
 - Match the existing code style (TypeScript strict mode; 2-space indentation, LF).
+- Run `npm run format` after changing TypeScript, JSON, Markdown, or YAML files.
 - Add or update tests for mapping and message-conversion behavior.
 - Preserve user privacy. Never log API keys or prompt contents.
 - Use `npm` so local development matches the checked-in lockfile and CI.
@@ -54,7 +59,7 @@ The Marketplace icon is `media/icon.png` (256x256). The vector source is `media/
 
 Before opening a pull request:
 
-1. Run `npm test`.
-2. Run `npm run package`.
+1. Run `npm run check`.
+2. Use `npm run vsix` and install the package locally when changing activation, contributions, or packaging.
 3. Update `CHANGELOG.md` when the change is user-visible.
 4. Update `README.md` or files in `docs/` when setup, behavior, or support guidance changes.

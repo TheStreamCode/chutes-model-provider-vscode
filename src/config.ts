@@ -23,9 +23,7 @@ export interface ChutesConfig {
 export function getConfig(): ChutesConfig {
   const cfg = vscode.workspace.getConfiguration('chutes');
   const endpoint = (cfg.get<string>('endpoint') || DEFAULT_ENDPOINT).trim().replace(/\/+$/, '');
-  const routerEndpoint = (cfg.get<string>('routerEndpoint') || DEFAULT_ROUTER_ENDPOINT)
-    .trim()
-    .replace(/\/+$/, '');
+  const routerEndpoint = (cfg.get<string>('routerEndpoint') || DEFAULT_ROUTER_ENDPOINT).trim().replace(/\/+$/, '');
   return {
     endpoint: endpoint || DEFAULT_ENDPOINT,
     modelFilter: (cfg.get<string>('modelFilter') || '').trim(),

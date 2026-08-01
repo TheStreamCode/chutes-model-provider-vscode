@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## 0.4.3 - 2026-08-01
+
+### Fixed
+
+- Validated model-catalogue and streaming payloads before exposing them to VS Code.
+- Preserved the final SSE event when a compatible server closes a stream without a trailing newline.
+- Rejected malformed or non-object tool arguments instead of invoking a tool with guessed input.
+- Propagated chat cancellation to every Chutes account request and refreshed the model cache immediately after configuration changes.
+
+### Changed
+
+- Added a reproducible quality gate with TypeScript, Oxlint, Prettier, offline regression tests, production bundling, and VSIX-content verification.
+- Hardened GitHub Actions with minimal permissions, immutable action revisions, concurrency control, timeouts, and deterministic packaging.
+- Added repository guidance, code ownership, improved contribution templates, and synchronized development, privacy, security, and user documentation.
+- Clarified the model, router, and account API trust boundaries and removed an unused account API request.
+
+### Security
+
+- Enabled private vulnerability reporting and Dependabot security updates while keeping routine version-update PRs disabled.
+- Escaped API-provided Markdown values before rendering account and quota information in chat.
+
 ## 0.4.2
 
 ### Changed

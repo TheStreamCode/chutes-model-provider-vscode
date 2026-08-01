@@ -94,8 +94,15 @@ async function main(): Promise<void> {
   check('maps tool-calling capability', toolModels.length > 0, `${toolModels.length} tool-capable`);
   console.log(`  info  ${visionModels.length} vision-capable model(s)`);
   const narrowed = applyUserFilter(chat, 'qwen');
-  check('applyUserFilter narrows by term', narrowed.length > 0 && narrowed.length < chat.length, `${narrowed.length} match "qwen"`);
-  check('mapped fields are well-formed', mapped.every((m) => m.id && m.name && m.family && m.maxInputTokens > 0 && m.maxOutputTokens > 0));
+  check(
+    'applyUserFilter narrows by term',
+    narrowed.length > 0 && narrowed.length < chat.length,
+    `${narrowed.length} match "qwen"`
+  );
+  check(
+    'mapped fields are well-formed',
+    mapped.every((m) => m.id && m.name && m.family && m.maxInputTokens > 0 && m.maxOutputTokens > 0)
+  );
 
   console.log('\n[3] Provider model listing (ChutesChatModelProvider)');
   const provider = new ChutesChatModelProvider(makeSecrets(KEY), client);
@@ -112,8 +119,18 @@ async function main(): Promise<void> {
   {
     const parts: unknown[] = [];
     const progress = { report: (p: unknown) => parts.push(p) };
-    const options = { modelOptions: { max_tokens: 20, temperature: 0 }, tools: undefined, toolMode: vscode.LanguageModelChatToolMode.Auto } as never;
-    await provider.provideLanguageModelChatResponse(model, [userMessage(new vscode.LanguageModelTextPart('Reply with exactly the single word: PONG'))], options, progress as never, fakeToken());
+    const options = {
+      modelOptions: { max_tokens: 20, temperature: 0 },
+      tools: undefined,
+      toolMode: vscode.LanguageModelChatToolMode.Auto
+    } as never;
+    await provider.provideLanguageModelChatResponse(
+      model,
+      [userMessage(new vscode.LanguageModelTextPart('Reply with exactly the single word: PONG'))],
+      options,
+      progress as never,
+      fakeToken()
+    );
     const text = collectText(parts);
     check('streams text back', text.trim().length > 0, JSON.stringify(text.slice(0, 60)));
   }
@@ -127,9 +144,21 @@ async function main(): Promise<void> {
       description: 'Get the current weather for a given city.',
       inputSchema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] }
     };
-    const options = { modelOptions: { max_tokens: 200, temperature: 0 }, tools: [tool], toolMode: vscode.LanguageModelChatToolMode.Required } as never;
-    await provider.provideLanguageModelChatResponse(model, [userMessage(new vscode.LanguageModelTextPart('What is the weather in Rome right now?'))], options, progress as never, fakeToken());
-    const calls = parts.filter((p): p is vscode.LanguageModelToolCallPart => p instanceof vscode.LanguageModelToolCallPart);
+    const options = {
+      modelOptions: { max_tokens: 200, temperature: 0 },
+      tools: [tool],
+      toolMode: vscode.LanguageModelChatToolMode.Required
+    } as never;
+    await provider.provideLanguageModelChatResponse(
+      model,
+      [userMessage(new vscode.LanguageModelTextPart('What is the weather in Rome right now?'))],
+      options,
+      progress as never,
+      fakeToken()
+    );
+    const calls = parts.filter(
+      (p): p is vscode.LanguageModelToolCallPart => p instanceof vscode.LanguageModelToolCallPart
+    );
     check('emits a tool call', calls.length > 0, calls.map((c) => `${c.name}(${JSON.stringify(c.input)})`).join(', '));
     check('tool call has valid parsed input', calls.length > 0 && typeof calls[0].input === 'object');
   }
@@ -151,7 +180,13 @@ async function main(): Promise<void> {
     const options = { modelOptions: { max_tokens: 500 }, toolMode: vscode.LanguageModelChatToolMode.Auto } as never;
     let threw = false;
     try {
-      await provider.provideLanguageModelChatResponse(model, [userMessage(new vscode.LanguageModelTextPart('Write a 500 word essay about the ocean.'))], options, progress as never, token as never);
+      await provider.provideLanguageModelChatResponse(
+        model,
+        [userMessage(new vscode.LanguageModelTextPart('Write a 500 word essay about the ocean.'))],
+        options,
+        progress as never,
+        token as never
+      );
     } catch {
       threw = true;
     }
@@ -163,20 +198,33 @@ async function main(): Promise<void> {
     try {
       // Prefer a non-reasoning vision model: heavy "thinking" models can spend the
       // whole token budget on reasoning_content and return no visible content.
-      const vModel = visionModels.find((m) => /gemma/i.test(m.id)) ?? visionModels.find((m) => /27b/i.test(m.id)) ?? visionModels[0];
+      const vModel =
+        visionModels.find((m) => /gemma/i.test(m.id)) ?? visionModels.find((m) => /27b/i.test(m.id)) ?? visionModels[0];
       const png = fs.readFileSync(path.join(__dirname, '..', 'media', 'icon.png'));
       const parts: unknown[] = [];
       const progress = { report: (p: unknown) => parts.push(p) };
-      const options = { modelOptions: { max_tokens: 512, temperature: 0 }, toolMode: vscode.LanguageModelChatToolMode.Auto } as never;
+      const options = {
+        modelOptions: { max_tokens: 512, temperature: 0 },
+        toolMode: vscode.LanguageModelChatToolMode.Auto
+      } as never;
       await provider.provideLanguageModelChatResponse(
         vModel,
-        [userMessage(new vscode.LanguageModelTextPart('Describe this image in one short sentence.'), vscode.LanguageModelDataPart.image(new Uint8Array(png), 'image/png'))],
+        [
+          userMessage(
+            new vscode.LanguageModelTextPart('Describe this image in one short sentence.'),
+            vscode.LanguageModelDataPart.image(new Uint8Array(png), 'image/png')
+          )
+        ],
         options,
         progress as never,
         fakeToken()
       );
       const text = collectText(parts);
-      check('vision model answers about the image', text.trim().length > 0, `${vModel.id}: ${JSON.stringify(text.slice(0, 80))}`);
+      check(
+        'vision model answers about the image',
+        text.trim().length > 0,
+        `${vModel.id}: ${JSON.stringify(text.slice(0, 80))}`
+      );
     } catch (err) {
       console.log(`  info  vision test skipped: ${(err as Error).message}`);
     }
@@ -199,7 +247,12 @@ async function main(): Promise<void> {
     check('billing-cycle spend present', !!billing, billing ? `$${billing.used} / $${billing.limit}` : 'none');
     const md = formatUsageMarkdown(data);
     check('usage markdown renders', md.includes('Chutes usage'));
-    console.log(md.split('\n').map((l) => '    ' + l).join('\n'));
+    console.log(
+      md
+        .split('\n')
+        .map((l) => '    ' + l)
+        .join('\n')
+    );
   } catch (err) {
     check('account usage fetch', false, (err as Error).message);
   }

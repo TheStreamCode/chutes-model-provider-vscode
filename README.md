@@ -40,24 +40,26 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 
 ## Requirements
 
-- **VS Code 1.104.0 or newer** (the language model provider API). VS Code **1.125+** also lets you discover this extension from the *Language Models* editor via **Install Model Providers**.
+- **VS Code 1.104.0 or newer** (the language model provider API). VS Code **1.125+** also lets you discover this extension from the _Language Models_ editor via **Install Model Providers**.
 - A **Chutes API key** (starts with `cpk_`). Create one at [chutes.ai](https://chutes.ai).
 
 ## Settings
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `chutes.endpoint` | `https://llm.chutes.ai/v1` | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints. |
-| `chutes.modelFilter` | _(empty)_ | Restrict which models appear. Comma-separated terms matched against the model id as a case-insensitive substring or regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Empty shows all chat models. |
-| `chutes.requestTimeoutMs` | `15000` | Timeout (ms) for fetching the model list. Does not limit streaming responses. |
-| `chutes.autoRouterEnabled` | `true` | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native router. |
-| `chutes.routerEndpoint` | `https://model-router-ten.vercel.app/v1` | Base URL of Chutes' native router, used by the **Auto (router)** model. Change only for a self-hosted router. |
+| Setting                    | Default                                  | Description                                                                                                                                                                                     |
+| -------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chutes.endpoint`          | `https://llm.chutes.ai/v1`               | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints.                                                                                                                 |
+| `chutes.modelFilter`       | _(empty)_                                | Restrict which models appear. Comma-separated terms matched against the model id as a case-insensitive substring or regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Empty shows all chat models. |
+| `chutes.requestTimeoutMs`  | `15000`                                  | Timeout (ms) for fetching the model list. Does not limit streaming responses.                                                                                                                   |
+| `chutes.autoRouterEnabled` | `true`                                   | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native router.                                                                     |
+| `chutes.routerEndpoint`    | `https://model-router-ten.vercel.app/v1` | Base URL of Chutes' native router, used by the **Auto (router)** model. Change only for a self-hosted router.                                                                                   |
+
+Changes to any `chutes.*` setting invalidate the model cache immediately; no window reload is required.
 
 ## Commands
 
-| Command | Description |
-| --- | --- |
-| `Chutes AI: Manage API Key` | Set, update or clear your API key. |
+| Command                     | Description                                              |
+| --------------------------- | -------------------------------------------------------- |
+| `Chutes AI: Manage API Key` | Set, update or clear your API key.                       |
 | `Chutes AI: Refresh Models` | Re-fetch the model list (e.g. after Chutes adds models). |
 
 ## Usage & spend in chat
@@ -77,7 +79,9 @@ Selection and fallback are performed by Chutes' router, not by this extension. I
 
 ## Privacy
 
-Your prompts and attachments are sent to the Chutes API to generate responses — that is the purpose of the extension. The API key is stored in VS Code SecretStorage and is never written to settings or logs. The extension collects no telemetry, analytics, or personal data.
+For a specific model, prompts and attachments are sent to the configured `chutes.endpoint`. For **Auto (router)**, they are sent to the configured `chutes.routerEndpoint`. The `@chutes` usage commands query `https://api.chutes.ai`. If you configure a custom endpoint or router, your API key and request content are sent to that service, so use only endpoints you trust.
+
+The API key is stored in VS Code SecretStorage and is never written to settings or logs. The extension collects no telemetry or analytics.
 
 Use of the Chutes service is subject to the official [Chutes Terms of Service](https://chutes.ai/terms) and [Chutes Privacy Policy](https://chutes.ai/privacy).
 
@@ -86,11 +90,11 @@ Use of the Chutes service is subject to the official [Chutes Terms of Service](h
 ```bash
 git clone https://github.com/TheStreamCode/chutes-model-provider-vscode
 cd chutes-model-provider-vscode
-npm install
-npm run compile
+npm ci
+npm run check
 ```
 
-Press `F5` to launch an Extension Development Host. Run `npm test` for the unit tests.
+Press `F5` to launch an Extension Development Host. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for the complete development workflow.
 
 ## 📚 Resources
 

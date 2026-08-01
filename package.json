@@ -2,7 +2,9 @@
   "name": "chutes-model-provider-vscode",
   "displayName": "Chutes AI Provider for GitHub Copilot Chat",
   "description": "Integrate Chutes.ai open-source models (DeepSeek, Qwen, GLM, Kimi and more) into VS Code's GitHub Copilot Chat — auto-discovered, with streaming, tool calling and vision.",
-  "version": "0.4.2",
+  "version": "0.4.3",
+  "private": true,
+  "packageManager": "npm@11.16.0",
   "publisher": "mikesoft",
   "author": {
     "name": "Michael Gasperini",
@@ -27,6 +29,7 @@
     "url": "https://github.com/sponsors/TheStreamCode"
   },
   "engines": {
+    "node": ">=22",
     "vscode": "^1.104.0"
   },
   "categories": [
@@ -126,20 +129,26 @@
   "scripts": {
     "vscode:prepublish": "npm run package",
     "check-types": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:code": "oxlint --deny-warnings src test esbuild.js prettier.config.cjs",
+    "lint": "npm run check-types && npm run lint:code && npm run format:check",
     "compile": "npm run check-types && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "package": "npm run check-types && node esbuild.js --production",
-    "test:build": "esbuild test/unit.test.ts --bundle --platform=node --format=cjs --outfile=test/unit.test.cjs --alias:vscode=./test/vscode-stub.cjs",
+    "test:build": "node node_modules/esbuild/bin/esbuild test/unit.test.ts --bundle --platform=node --format=cjs --outfile=test/unit.test.cjs --alias:vscode=./test/vscode-stub.cjs",
     "test": "npm run test:build && node --test test/unit.test.cjs",
     "test:live": "esbuild test/harness.ts --bundle --platform=node --format=cjs --outfile=test/harness.cjs --alias:vscode=./test/vscode-stub.cjs && node test/harness.cjs",
-    "check": "npm run check-types && node esbuild.js && npm test && vsce ls",
+    "check": "npm run lint && npm test && node esbuild.js --production && vsce ls",
     "vsix": "vsce package"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
+    "@types/node": "^22.20.1",
     "@types/vscode": "^1.104.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.28.1",
+    "oxlint": "^1.76.0",
+    "prettier": "^3.9.6",
     "typescript": "^7.0.2"
   }
 }

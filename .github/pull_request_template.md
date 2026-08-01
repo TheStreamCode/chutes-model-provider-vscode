@@ -10,11 +10,11 @@ Fixes #
 
 ## Verification
 
-- [ ] `npm test` passes
-- [ ] `npm run package` produces a valid VSIX
-- [ ] Manually verified in Extension Development Host
-- [ ] Model auto-discovery still works after change
-- [ ] No new outbound endpoints beyond Chutes API
+- [ ] `npm run check` passes
+- [ ] Manually verified in Extension Development Host, or not applicable
+- [ ] Added or updated regression tests for behavior changes
+- [ ] Updated user documentation and `CHANGELOG.md`, or not applicable
+- [ ] No new outbound endpoints, or each new endpoint is documented
 
 ## Privacy
 

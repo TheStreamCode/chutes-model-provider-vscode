@@ -15,6 +15,7 @@ import { normalizeDashboardData } from '../src/usage/normalize';
 import type { DashboardData } from '../src/usage/types';
 import type { ChutesRawModel } from '../src/chutesClient';
 import { DEFAULT_ROUTER_ENDPOINT } from '../src/config';
+import { ChutesClient } from '../src/chutesClient';
 
 function model(partial: Partial<ChutesRawModel> & { id: string }): ChutesRawModel {
   return { input_modalities: ['text'], output_modalities: ['text'], ...partial };
@@ -29,16 +30,31 @@ function assistantMsg(...parts: unknown[]): vscode.LanguageModelChatRequestMessa
 
 test('isChatModel keeps text↔text, drops image output', () => {
   assert.equal(isChatModel(model({ id: 'a/Chat' })), true);
-  assert.equal(isChatModel(model({ id: 'a/VL', input_modalities: ['text', 'image'], output_modalities: ['text'] })), true);
-  assert.equal(isChatModel(model({ id: 'a/ImageGen', input_modalities: ['text'], output_modalities: ['image'] })), false);
+  assert.equal(
+    isChatModel(model({ id: 'a/VL', input_modalities: ['text', 'image'], output_modalities: ['text'] })),
+    true
+  );
+  assert.equal(
+    isChatModel(model({ id: 'a/ImageGen', input_modalities: ['text'], output_modalities: ['image'] })),
+    false
+  );
 });
 
 test('applyUserFilter matches substrings, regex, and comma lists', () => {
   const models = [model({ id: 'x/Foo' }), model({ id: 'y/Bar' }), model({ id: 'z/Baz' })];
   assert.equal(applyUserFilter(models, '').length, 3);
-  assert.deepEqual(applyUserFilter(models, 'foo').map((m) => m.id), ['x/Foo']);
-  assert.deepEqual(applyUserFilter(models, 'foo, bar').map((m) => m.id), ['x/Foo', 'y/Bar']);
-  assert.deepEqual(applyUserFilter(models, 'ba.').map((m) => m.id), ['y/Bar', 'z/Baz']);
+  assert.deepEqual(
+    applyUserFilter(models, 'foo').map((m) => m.id),
+    ['x/Foo']
+  );
+  assert.deepEqual(
+    applyUserFilter(models, 'foo, bar').map((m) => m.id),
+    ['x/Foo', 'y/Bar']
+  );
+  assert.deepEqual(
+    applyUserFilter(models, 'ba.').map((m) => m.id),
+    ['y/Bar', 'z/Baz']
+  );
 });
 
 test('toChatInformation maps fields and capabilities', () => {
@@ -70,6 +86,56 @@ test('toChatInformation caps output at context and tolerates missing metadata', 
   assert.equal(info.capabilities.imageInput, false);
 });
 
+test('toChatInformation rejects invalid numeric metadata at the API boundary', () => {
+  const info = toChatInformation(
+    model({ id: 'p/Broken', context_length: -1, max_model_len: 0, max_output_length: Number.NaN })
+  );
+  assert.equal(info.maxInputTokens, 32768);
+  assert.equal(info.maxOutputTokens, 32768);
+});
+
+test('ChutesClient drops malformed model rows', async () => {
+  const request = (async () =>
+    new Response(JSON.stringify({ data: [null, 42, { id: '' }, { id: 'valid/model' }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })) as typeof fetch;
+  const client = new ChutesClient(
+    () => ({
+      endpoint: 'https://example.test/v1',
+      modelFilter: '',
+      requestTimeoutMs: 1000,
+      autoRouterEnabled: true,
+      routerEndpoint: DEFAULT_ROUTER_ENDPOINT
+    }),
+    request
+  );
+  assert.deepEqual(await client.listModels('cpk_test'), [{ id: 'valid/model' }]);
+});
+
+test('ChutesClient parses the final SSE event without a trailing newline', async () => {
+  const request = (async () =>
+    new Response('data: {"choices":[{"delta":{"content":"done"}}]}', {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' }
+    })) as typeof fetch;
+  const client = new ChutesClient(
+    () => ({
+      endpoint: 'https://example.test/v1',
+      modelFilter: '',
+      requestTimeoutMs: 1000,
+      autoRouterEnabled: true,
+      routerEndpoint: DEFAULT_ROUTER_ENDPOINT
+    }),
+    request
+  );
+  const deltas = [];
+  for await (const delta of client.streamChatCompletion('cpk_test', {}, new AbortController().signal)) {
+    deltas.push(delta);
+  }
+  assert.deepEqual(deltas, [{ content: 'done' }]);
+});
+
 test('autoRouterInfo describes the virtual router model', () => {
   const info = autoRouterInfo();
   assert.equal(info.id, AUTO_MODEL_ID);
@@ -84,7 +150,9 @@ test('convertMessages: plain user text', () => {
 });
 
 test('convertMessages: assistant tool call', () => {
-  const out = convertMessages([assistantMsg(new vscode.LanguageModelToolCallPart('call_1', 'get_weather', { city: 'Rome' }))]);
+  const out = convertMessages([
+    assistantMsg(new vscode.LanguageModelToolCallPart('call_1', 'get_weather', { city: 'Rome' }))
+  ]);
   assert.equal(out.length, 1);
   assert.equal(out[0].role, 'assistant');
   assert.equal(out[0].content, null);
@@ -94,13 +162,17 @@ test('convertMessages: assistant tool call', () => {
 });
 
 test('convertMessages: tool result becomes a tool-role message', () => {
-  const out = convertMessages([userMsg(new vscode.LanguageModelToolResultPart('call_1', [new vscode.LanguageModelTextPart('18C')]))]);
+  const out = convertMessages([
+    userMsg(new vscode.LanguageModelToolResultPart('call_1', [new vscode.LanguageModelTextPart('18C')]))
+  ]);
   assert.deepEqual(out, [{ role: 'tool', tool_call_id: 'call_1', content: '18C' }]);
 });
 
 test('convertMessages: text + image becomes a multimodal user message', () => {
   const png = new Uint8Array([1, 2, 3]);
-  const out = convertMessages([userMsg(new vscode.LanguageModelTextPart('what is this'), vscode.LanguageModelDataPart.image(png, 'image/png'))]);
+  const out = convertMessages([
+    userMsg(new vscode.LanguageModelTextPart('what is this'), vscode.LanguageModelDataPart.image(png, 'image/png'))
+  ]);
   assert.equal(out.length, 1);
   assert.equal(out[0].role, 'user');
   assert.ok(Array.isArray(out[0].content));
@@ -248,6 +320,7 @@ test('provider: Auto model streams via the router endpoint; normal models do not
     listModels: async () => RAW,
     async *streamChatCompletion(_k: string, _b: unknown, _s: unknown, endpointOverride?: string) {
       captured.push(endpointOverride);
+      yield {};
     }
   } as never;
   const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
@@ -268,6 +341,25 @@ test('provider: Auto model streams via the router endpoint; normal models do not
   assert.equal(captured[1], undefined);
 });
 
+test('provider: malformed tool arguments fail closed', async () => {
+  const client = {
+    listModels: async () => RAW,
+    async *streamChatCompletion() {
+      yield {
+        tool_calls: [{ index: 0, id: 'call_1', function: { name: 'dangerous_tool', arguments: '{' } }]
+      };
+    }
+  } as never;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+  const progress = { report() {} } as never;
+  const token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) } as never;
+
+  await assert.rejects(
+    provider.provideLanguageModelChatResponse(autoRouterInfo(), [], {} as never, progress, token),
+    /invalid arguments returned for tool/
+  );
+});
+
 // --- usage chat participant: markdown formatting + normalization ---
 
 test('formatUsageMarkdown renders plan and windows table', () => {
@@ -281,8 +373,28 @@ test('formatUsageMarkdown renders plan and windows table', () => {
       paygDiscountPercent: 10
     },
     windows: [
-      { id: 'b', kind: 'billing-cycle', label: 'Billing Cycle Cap', unit: 'usd', used: 55.339, limit: 100, remaining: 44.661, percentUsed: 55.339, resetLabel: null },
-      { id: 'd', kind: 'daily-requests', label: 'Daily Quota', unit: 'requests', used: 12, limit: 5000, remaining: 4988, percentUsed: 0.24, resetLabel: null }
+      {
+        id: 'b',
+        kind: 'billing-cycle',
+        label: 'Billing Cycle Cap',
+        unit: 'usd',
+        used: 55.339,
+        limit: 100,
+        remaining: 44.661,
+        percentUsed: 55.339,
+        resetLabel: null
+      },
+      {
+        id: 'd',
+        kind: 'daily-requests',
+        label: 'Daily Quota',
+        unit: 'requests',
+        used: 12,
+        limit: 5000,
+        remaining: 4988,
+        percentUsed: 0.24,
+        resetLabel: null
+      }
     ],
     quotas: []
   };
@@ -298,7 +410,19 @@ test('formatUsageMarkdown handles empty data and unlimited limits', () => {
   const unlimited = formatUsageMarkdown({
     plan: null,
     quotas: [],
-    windows: [{ id: 'd', kind: 'daily-requests', label: 'Daily Quota', unit: 'requests', used: 0, limit: 0, remaining: null, percentUsed: null, resetLabel: null }]
+    windows: [
+      {
+        id: 'd',
+        kind: 'daily-requests',
+        label: 'Daily Quota',
+        unit: 'requests',
+        used: 0,
+        limit: 0,
+        remaining: null,
+        percentUsed: null,
+        resetLabel: null
+      }
+    ]
   });
   assert.match(unlimited, /Unlimited/);
 });
@@ -316,6 +440,23 @@ test('formatQuotasMarkdown renders rows, unlimited, and empty state', () => {
   assert.match(md, /5,000/);
   assert.match(md, /Unlimited/);
   assert.match(formatQuotasMarkdown({ plan: null, windows: [], quotas: [] }), /No quota data/);
+});
+
+test('usage markdown escapes API-provided table and inline markdown', () => {
+  const data: DashboardData = {
+    plan: {
+      planName: 'Pro *preview*',
+      monthlyPriceUsd: null,
+      monthlyCapUsd: null,
+      fourHourCapUsd: null,
+      dailyRequestLimit: null,
+      paygDiscountPercent: null
+    },
+    windows: [],
+    quotas: [{ modelLabel: 'model|unsafe', quota: 10, lastUpdated: null }]
+  };
+  assert.ok(formatUsageMarkdown(data).includes('Pro \\*preview\\*'));
+  assert.ok(formatQuotasMarkdown(data).includes('model\\|unsafe'));
 });
 
 test('normalizeDashboardData parses spend windows and derives the plan', () => {

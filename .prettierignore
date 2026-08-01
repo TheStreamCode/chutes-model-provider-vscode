@@ -1,0 +1,7 @@
+dist/
+media/
+node_modules/
+out/
+*.vsix
+package-lock.json
+test/*.cjs
