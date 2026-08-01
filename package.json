@@ -136,7 +136,7 @@
     "compile": "npm run check-types && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "package": "npm run check-types && node esbuild.js --production",
-    "test:build": "node node_modules/esbuild/bin/esbuild test/unit.test.ts --bundle --platform=node --format=cjs --outfile=test/unit.test.cjs --alias:vscode=./test/vscode-stub.cjs",
+    "test:build": "node test/build.js",
     "test": "npm run test:build && node --test test/unit.test.cjs",
     "test:live": "esbuild test/harness.ts --bundle --platform=node --format=cjs --outfile=test/harness.cjs --alias:vscode=./test/vscode-stub.cjs && node test/harness.cjs",
     "check": "npm run lint && npm test && node esbuild.js --production && vsce ls",

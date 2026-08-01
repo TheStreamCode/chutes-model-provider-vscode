@@ -15,6 +15,7 @@
 
 - Added a reproducible quality gate with TypeScript, Oxlint, Prettier, offline regression tests, production bundling, and VSIX-content verification.
 - Hardened GitHub Actions with minimal permissions, immutable action revisions, concurrency control, timeouts, and deterministic packaging.
+- Made the test bundle step portable across Windows and Linux runners by using esbuild's JavaScript API.
 - Added repository guidance, code ownership, improved contribution templates, and synchronized development, privacy, security, and user documentation.
 - Clarified the model, router, and account API trust boundaries and removed an unused account API request.
 
