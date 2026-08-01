@@ -2,6 +2,7 @@
 
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/mikesoft.chutes-model-provider-vscode?label=Marketplace&color=6366F1)](https://marketplace.visualstudio.com/items?itemName=mikesoft.chutes-model-provider-vscode)
 [![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/mikesoft.chutes-model-provider-vscode?color=0EA5E9)](https://marketplace.visualstudio.com/items?itemName=mikesoft.chutes-model-provider-vscode)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/mikesoft/chutes-model-provider-vscode?label=Open%20VSX&color=A60EE5)](https://open-vsx.org/extension/mikesoft/chutes-model-provider-vscode)
 [![CI](https://github.com/TheStreamCode/chutes-model-provider-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/TheStreamCode/chutes-model-provider-vscode/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-TheStreamCode-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
@@ -14,7 +15,7 @@ Leverage [Chutes.ai](https://chutes.ai) open-source models — including DeepSee
 
 ## ⚡ Quick Start
 
-1. Install the extension from the VS Code Marketplace.
+1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=mikesoft.chutes-model-provider-vscode) — or from [Open VSX](https://open-vsx.org/extension/mikesoft/chutes-model-provider-vscode) if your editor uses that registry.
 2. Open VS Code's Chat view.
 3. Open the model picker and select **Manage Models…**.
 4. Choose **Chutes AI** as the provider.
