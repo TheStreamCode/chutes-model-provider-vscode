@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.5 - 2026-08-08
+
 ### Fixed
 
 - Propagated model-list cancellation and prevented invalidated in-flight requests from restoring stale cache data.
@@ -18,6 +20,7 @@
   requests now use limited concurrency.
 - Potentially expensive model-filter regular expressions now fall back to literal substring matching.
 - Pinned the VS Code API types to the declared minimum and added a high-severity dependency audit to the quality gate.
+- Documented the extension architecture, outbound request paths and endpoint validation behavior.
 
 ### Security
 

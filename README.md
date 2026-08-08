@@ -39,6 +39,24 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 
 ---
 
+## How it works
+
+```text
+VS Code Chat
+    │  Language Model Chat Provider API
+    ▼
+Chutes AI Provider
+    ├── selected model ─────────► chutes.endpoint
+    ├── Auto (router) ──────────► chutes.routerEndpoint
+    └── @chutes usage commands ─► https://api.chutes.ai
+
+API key ◄──────────────► VS Code SecretStorage (OS keychain)
+```
+
+The extension validates catalogue, account and streaming payloads before exposing them to VS Code. Requests honour
+cancellation, malformed tool calls fail closed, and bounded response processing prevents an endpoint from returning
+unlimited data. It does not run a local server, persist prompts or collect telemetry.
+
 ## Requirements
 
 - **VS Code 1.106.0 or newer** (required for image/data chat parts). VS Code **1.125+** also lets you discover this extension from the _Language Models_ editor via **Install Model Providers**.
@@ -100,6 +118,7 @@ Press `F5` to launch an Extension Development Host. See [CONTRIBUTING.md](CONTRI
 ## 📚 Resources
 
 - [User guide](docs/user-guide.md) · [Troubleshooting](docs/troubleshooting.md)
+- [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) · [GitHub releases](https://github.com/TheStreamCode/chutes-model-provider-vscode/releases)
 - [Chutes documentation](https://chutes.ai/docs)
 - [VS Code Chat Provider API](https://code.visualstudio.com/api/extension-guides/ai/language-model-chat-provider)
 

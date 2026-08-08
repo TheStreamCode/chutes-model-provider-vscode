@@ -23,6 +23,18 @@ Open Chat, click the model dropdown, and select a Chutes model. The list is fetc
 
 Models that accept image input (the picker marks them via their capabilities) can read images you attach to a chat message.
 
+## Request paths and data
+
+| Feature                  | Destination             | Data sent                                                    |
+| ------------------------ | ----------------------- | ------------------------------------------------------------ |
+| Selected Chutes model    | `chutes.endpoint`       | API key, conversation, attachments and advertised tool data. |
+| **Auto (router)**        | `chutes.routerEndpoint` | API key, conversation, attachments and advertised tool data. |
+| `@chutes` usage commands | `https://api.chutes.ai` | API key and account usage request.                           |
+
+The API key remains in VS Code SecretStorage. The extension does not log prompts, attachments, account responses or
+tool arguments, and it collects no telemetry. Custom endpoints receive the same request data, so configure only
+services you trust.
+
 ## Settings
 
 | Setting                    | Default                                  | Description                                                                                                                                                            |

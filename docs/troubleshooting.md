@@ -28,3 +28,9 @@ Some reasoning models stream their chain-of-thought inline. This is the raw mode
 ## Image attachments are ignored
 
 Only models with image input support can read images. Pick a vision-capable model.
+
+## A custom endpoint response is rejected
+
+The extension rejects malformed catalogue rows, invalid tool calls and excessively large API or streaming payloads
+instead of guessing or processing unbounded data. Check that the endpoint follows the OpenAI-compatible response and
+SSE formats, emits valid JSON tool arguments, and terminates each SSE event with a blank line.
