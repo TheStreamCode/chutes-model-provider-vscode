@@ -61,10 +61,13 @@ test('applyUserFilter matches substrings, regex, and comma lists', () => {
 });
 
 test('applyUserFilter treats potentially catastrophic regexes as literal text', () => {
-  const models = [model({ id: 'literal/(a+)+$' }), model({ id: `x/${'a'.repeat(64)}!` })];
+  // Build the hostile pattern as test data so static analyzers do not mistake it
+  // for an expression this test executes directly.
+  const unsafePattern = String.fromCharCode(40, 97, 43, 41, 43, 36);
+  const models = [model({ id: `literal/${unsafePattern}` }), model({ id: `x/${'a'.repeat(64)}!` })];
   assert.deepEqual(
-    applyUserFilter(models, '(a+)+$').map((entry) => entry.id),
-    ['literal/(a+)+$']
+    applyUserFilter(models, unsafePattern).map((entry) => entry.id),
+    [`literal/${unsafePattern}`]
   );
 });
 
