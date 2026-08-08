@@ -41,18 +41,18 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 
 ## Requirements
 
-- **VS Code 1.104.0 or newer** (the language model provider API). VS Code **1.125+** also lets you discover this extension from the _Language Models_ editor via **Install Model Providers**.
+- **VS Code 1.106.0 or newer** (required for image/data chat parts). VS Code **1.125+** also lets you discover this extension from the _Language Models_ editor via **Install Model Providers**.
 - A **Chutes API key** (starts with `cpk_`). Create one at [chutes.ai](https://chutes.ai).
 
 ## Settings
 
-| Setting                    | Default                                  | Description                                                                                                                                                                                     |
-| -------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chutes.endpoint`          | `https://llm.chutes.ai/v1`               | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints.                                                                                                                 |
-| `chutes.modelFilter`       | _(empty)_                                | Restrict which models appear. Comma-separated terms matched against the model id as a case-insensitive substring or regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Empty shows all chat models. |
-| `chutes.requestTimeoutMs`  | `15000`                                  | Timeout (ms) for fetching the model list. Does not limit streaming responses.                                                                                                                   |
-| `chutes.autoRouterEnabled` | `true`                                   | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native router.                                                                     |
-| `chutes.routerEndpoint`    | `https://model-router-ten.vercel.app/v1` | Base URL of Chutes' native router, used by the **Auto (router)** model. Change only for a self-hosted router.                                                                                   |
+| Setting                    | Default                                  | Description                                                                                                                                                                                                               |
+| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chutes.endpoint`          | `https://llm.chutes.ai/v1`               | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints.                                                                                                                                           |
+| `chutes.modelFilter`       | _(empty)_                                | Restrict which models appear. Comma-separated terms use a case-insensitive substring or safe regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`); unsafe or invalid regexes are treated literally. Empty shows all chat models. |
+| `chutes.requestTimeoutMs`  | `15000`                                  | Timeout (ms) for fetching the model list. Does not limit streaming responses.                                                                                                                                             |
+| `chutes.autoRouterEnabled` | `true`                                   | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native router.                                                                                               |
+| `chutes.routerEndpoint`    | `https://model-router-ten.vercel.app/v1` | Base URL of Chutes' native router, used by the **Auto (router)** model. Change only for a self-hosted router.                                                                                                             |
 
 Changes to any `chutes.*` setting invalidate the model cache immediately; no window reload is required.
 

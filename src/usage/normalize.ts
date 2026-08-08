@@ -182,6 +182,7 @@ export function normalizeQuotaUsage(payload: JsonContainer | null): QuotaUsageSu
   }
   let usedTotal: number | null = null;
   let quotaTotal: number | null = null;
+  let hasUnlimitedQuota = false;
   for (const value of Object.values(payload)) {
     const item = asObject(value);
     if (!item) {
@@ -193,8 +194,15 @@ export function normalizeQuotaUsage(payload: JsonContainer | null): QuotaUsageSu
       usedTotal = (usedTotal ?? 0) + used;
     }
     if (quota !== null) {
-      quotaTotal = (quotaTotal ?? 0) + quota;
+      if (quota === 0) {
+        hasUnlimitedQuota = true;
+      } else if (!hasUnlimitedQuota) {
+        quotaTotal = (quotaTotal ?? 0) + quota;
+      }
     }
+  }
+  if (hasUnlimitedQuota) {
+    quotaTotal = 0;
   }
   if (usedTotal !== null || quotaTotal !== null) {
     return { used: usedTotal, quota: quotaTotal, trusted: true };
@@ -280,16 +288,18 @@ function buildDailyQuotaWindow(
     if (entry.quota === null) {
       return sum;
     }
+    if (entry.quota === 0 || sum === 0) {
+      return 0;
+    }
     return (sum ?? 0) + entry.quota;
   }, null);
-
-  if (totalQuota === null) {
-    return [];
-  }
 
   const preferredQuotaUsage = quotaUsageMe ?? quotaUsageFallback;
   const liveTotalRequests = invocationStats?.totalRequests ?? 0;
   const limit = preferredQuotaUsage?.quota ?? totalQuota;
+  if (limit === null) {
+    return [];
+  }
   const isUnlimited = limit === 0;
   const isStale = preferredQuotaUsage?.used === 0 && liveTotalRequests > 0;
   const used = isStale ? null : preferredQuotaUsage?.trusted ? preferredQuotaUsage.used : null;
@@ -381,9 +391,10 @@ function countUsageSignals(payload: JsonObject): number {
 
 function findBestUsageObject(
   payload: JsonObject,
-  seen = new Set<JsonObject>()
+  seen = new Set<JsonObject>(),
+  depth = 0
 ): { object: JsonObject; score: number } | null {
-  if (seen.has(payload)) {
+  if (seen.has(payload) || depth >= 50) {
     return null;
   }
   seen.add(payload);
@@ -397,7 +408,7 @@ function findBestUsageObject(
     if (!child) {
       continue;
     }
-    const nestedBest = findBestUsageObject(child, seen);
+    const nestedBest = findBestUsageObject(child, seen, depth + 1);
     if (nestedBest && (best === null || nestedBest.score > best.score)) {
       best = nestedBest;
     }
@@ -416,12 +427,12 @@ function pickObject(payload: JsonObject, aliases: string[]): { key: string; valu
 }
 
 function asNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
     return value;
   }
   if (typeof value === 'string' && value.trim().length > 0) {
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
   }
   return null;
 }

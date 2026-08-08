@@ -30,7 +30,7 @@
   },
   "engines": {
     "node": ">=22",
-    "vscode": "^1.104.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "AI",
@@ -105,7 +105,7 @@
         "chutes.modelFilter": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Restrict which models appear in the picker. Comma-separated terms; each is matched against the model id as a case-insensitive substring or a regular expression (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Leave empty to show all chat models."
+          "markdownDescription": "Restrict which models appear in the picker. Comma-separated terms; each is matched against the model id as a case-insensitive substring or a safe regular expression (e.g. `deepseek, qwen` or `Qwen3.*TEE`). Unsafe or invalid expressions are treated as literal substrings. Leave empty to show all chat models."
         },
         "chutes.requestTimeoutMs": {
           "type": "number",
@@ -133,18 +133,19 @@
     "format:check": "prettier --check .",
     "lint:code": "oxlint --deny-warnings src test esbuild.js prettier.config.cjs",
     "lint": "npm run check-types && npm run lint:code && npm run format:check",
+    "audit": "npm audit --audit-level=high",
     "compile": "npm run check-types && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "package": "npm run check-types && node esbuild.js --production",
     "test:build": "node test/build.js",
     "test": "npm run test:build && node --test test/unit.test.cjs",
     "test:live": "esbuild test/harness.ts --bundle --platform=node --format=cjs --outfile=test/harness.cjs --alias:vscode=./test/vscode-stub.cjs && node test/harness.cjs",
-    "check": "npm run lint && npm test && node esbuild.js --production && vsce ls",
+    "check": "npm run lint && npm run audit && npm test && node esbuild.js --production && vsce ls",
     "vsix": "vsce package"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "@types/vscode": "^1.104.0",
+    "@types/vscode": "1.106.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.28.1",
     "oxlint": "^1.76.0",

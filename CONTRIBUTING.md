@@ -6,7 +6,7 @@ Thanks for your interest in improving Chutes AI — Chat Model Provider.
 
 - Node.js 22 or newer
 - `npm`
-- Visual Studio Code 1.104 or newer
+- Visual Studio Code 1.106 or newer
 
 ## Development setup
 

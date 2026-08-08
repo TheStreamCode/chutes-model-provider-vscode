@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Fixed
+
+- Propagated model-list cancellation and prevented invalidated in-flight requests from restoring stale cache data.
+- Reserved `model-router` for the virtual **Auto (router)** entry so a catalogue collision cannot create duplicate
+  models or route a normal model through the router endpoint.
+- Corrected daily quota normalization for mixed unlimited/finite entries, negative API values, and account payloads
+  that provide quota usage without a separate quota list.
+- Raised the minimum supported VS Code version to 1.106 because image attachments use `LanguageModelDataPart`, which
+  is not present in the previously declared 1.104 API.
+
+### Changed
+
+- Bounded model, account, error, streaming-event, tool-call, and quota-fallback payload processing; quota fallback
+  requests now use limited concurrency.
+- Potentially expensive model-filter regular expressions now fall back to literal substring matching.
+- Pinned the VS Code API types to the declared minimum and added a high-severity dependency audit to the quality gate.
+
+### Security
+
+- Tool calls now fail closed unless their streamed id, type, name, arguments, and advertised availability are valid;
+  missing ids are no longer synthesized.
+- Updated vulnerable transitive development dependencies used by VSIX packaging (`brace-expansion`, `fast-uri`,
+  `js-yaml`, and `undici`).
+
 ## 0.4.4 - 2026-08-01
 
 ### Fixed

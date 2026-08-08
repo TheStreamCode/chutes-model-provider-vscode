@@ -6,6 +6,10 @@ import { isChatModel, applyUserFilter, toChatInformation, autoRouterInfo, AUTO_M
 import { convertMessages, convertTools, convertToolMode, messageToText } from './messageConverter';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_TOOL_CALLS = 64;
+const MAX_TOOL_CALL_ID_CHARS = 512;
+const MAX_TOOL_NAME_CHARS = 256;
+const MAX_TOOL_ARGUMENT_CHARS = 1024 * 1024;
 
 /** Sampling parameters we forward from VS Code's modelOptions to the Chutes API. */
 const PASSTHROUGH_OPTIONS = [
@@ -25,6 +29,7 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
   readonly onDidChangeLanguageModelChatInformation = this.changed.event;
 
   private cache?: { at: number; models: vscode.LanguageModelChatInformation[] };
+  private cacheGeneration = 0;
   private pendingKeyPrompt?: Thenable<string | undefined>;
 
   constructor(
@@ -34,14 +39,18 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
 
   /** Drops the cached model list and asks VS Code to re-query. */
   invalidate(): void {
+    this.cacheGeneration++;
     this.cache = undefined;
     this.changed.fire();
   }
 
   async provideLanguageModelChatInformation(
     options: { silent: boolean },
-    _token: vscode.CancellationToken
+    token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelChatInformation[]> {
+    if (token.isCancellationRequested) {
+      return [];
+    }
     let apiKey = await this.secrets.get();
     if (!apiKey) {
       if (options.silent) {
@@ -55,14 +64,27 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       }
     }
 
+    if (token.isCancellationRequested) {
+      return [];
+    }
+
     if (this.cache && Date.now() - this.cache.at < CACHE_TTL_MS) {
       return this.cache.models;
     }
 
+    const generation = this.cacheGeneration;
+    const controller = new AbortController();
+    const cancellation = token.onCancellationRequested(() => controller.abort());
     try {
       const cfg = getConfig();
-      const raw = await this.client.listModels(apiKey);
-      const models = applyUserFilter(raw.filter(isChatModel), cfg.modelFilter)
+      const raw = await this.client.listModels(apiKey, controller.signal);
+      if (token.isCancellationRequested || generation !== this.cacheGeneration) {
+        return [];
+      }
+      const models = applyUserFilter(
+        raw.filter((candidate) => candidate.id !== AUTO_MODEL_ID).filter(isChatModel),
+        cfg.modelFilter
+      )
         .map(toChatInformation)
         .sort((a, b) => a.id.localeCompare(b.id));
       // Pin the virtual "Auto" entry at the top so it is easy to find in the picker.
@@ -70,11 +92,16 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       this.cache = { at: Date.now(), models: withAuto };
       return withAuto;
     } catch (err) {
+      if (controller.signal.aborted || token.isCancellationRequested || generation !== this.cacheGeneration) {
+        return [];
+      }
       if (!options.silent) {
         const msg = err instanceof ChutesApiError ? err.message : String(err);
         void vscode.window.showErrorMessage(`Chutes AI: could not load models. ${msg}`);
       }
       return [];
+    } finally {
+      cancellation.dispose();
     }
   }
 
@@ -85,9 +112,15 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken
   ): Promise<void> {
+    if (token.isCancellationRequested) {
+      return;
+    }
     const apiKey = await this.secrets.get();
     if (!apiKey) {
       throw new Error('Chutes AI: no API key configured. Run "Chutes AI: Manage API Key".');
+    }
+    if (token.isCancellationRequested) {
+      return;
     }
 
     // The virtual "Auto" model routes to Chutes' native router endpoint instead of
@@ -115,29 +148,58 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     }
 
     const controller = new AbortController();
+    if (token.isCancellationRequested) {
+      controller.abort();
+    }
     const cancel = token.onCancellationRequested(() => controller.abort());
 
     // Tool-call fragments arrive split across deltas, keyed by index; assemble then emit.
-    const toolCalls = new Map<number, { id: string; name: string; args: string }>();
+    const toolCalls = new Map<number, { id?: string; type?: string; name?: string; args: string }>();
+    const availableToolNames = new Set(options.tools?.map((tool) => tool.name) ?? []);
 
     try {
       for await (const delta of this.client.streamChatCompletion(apiKey, body, controller.signal, endpointOverride)) {
         if (token.isCancellationRequested) {
           break;
         }
+        if (delta.toolCallError) {
+          throw new Error(`Chutes AI: ${delta.toolCallError} returned by the model.`);
+        }
         if (delta.content) {
           progress.report(new vscode.LanguageModelTextPart(delta.content));
         }
         if (delta.tool_calls) {
           for (const tc of delta.tool_calls) {
-            const current = toolCalls.get(tc.index) ?? { id: '', name: '', args: '' };
-            if (tc.id) {
+            if (tc.index >= MAX_TOOL_CALLS || (!toolCalls.has(tc.index) && toolCalls.size >= MAX_TOOL_CALLS)) {
+              throw new Error(`Chutes AI: response exceeded the ${MAX_TOOL_CALLS}-tool-call limit.`);
+            }
+            const current = toolCalls.get(tc.index) ?? { args: '' };
+            if (tc.id !== undefined) {
+              if (!tc.id || tc.id.length > MAX_TOOL_CALL_ID_CHARS || (current.id && current.id !== tc.id)) {
+                throw new Error('Chutes AI: malformed tool call id returned by the model.');
+              }
               current.id = tc.id;
             }
-            if (tc.function?.name) {
+            if (tc.type !== undefined) {
+              if (tc.type !== 'function' || (current.type && current.type !== tc.type)) {
+                throw new Error('Chutes AI: unsupported tool call type returned by the model.');
+              }
+              current.type = tc.type;
+            }
+            if (tc.function?.name !== undefined) {
+              if (
+                !tc.function.name ||
+                tc.function.name.length > MAX_TOOL_NAME_CHARS ||
+                (current.name && current.name !== tc.function.name)
+              ) {
+                throw new Error('Chutes AI: malformed tool name returned by the model.');
+              }
               current.name = tc.function.name;
             }
-            if (tc.function?.arguments) {
+            if (tc.function?.arguments !== undefined) {
+              if (current.args.length + tc.function.arguments.length > MAX_TOOL_ARGUMENT_CHARS) {
+                throw new Error('Chutes AI: tool arguments exceeded the supported size limit.');
+              }
               current.args += tc.function.arguments;
             }
             toolCalls.set(tc.index, current);
@@ -160,8 +222,11 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     }
 
     for (const [index, call] of Array.from(toolCalls.entries()).sort(([a], [b]) => a - b)) {
-      if (!call.name) {
-        continue;
+      if (!call.id || call.type !== 'function' || !call.name) {
+        throw new Error(`Chutes AI: incomplete tool call returned at index ${index}.`);
+      }
+      if (!availableToolNames.has(call.name)) {
+        throw new Error(`Chutes AI: unavailable tool "${call.name}" requested by the model.`);
       }
       let input: unknown = {};
       try {
@@ -172,7 +237,7 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       if (typeof input !== 'object' || input === null || Array.isArray(input)) {
         throw new Error(`Chutes AI: non-object arguments returned for tool "${call.name}".`);
       }
-      progress.report(new vscode.LanguageModelToolCallPart(call.id || `chutes-tool-${index}`, call.name, input));
+      progress.report(new vscode.LanguageModelToolCallPart(call.id, call.name, input));
     }
   }
 

@@ -5,7 +5,7 @@
 - Make sure an API key is set: run **`Chutes AI: Manage API Key`**.
 - Run **`Chutes AI: Refresh Models`** to re-fetch the list.
 - Check `chutes.modelFilter` — an over-strict filter can hide everything. Clear it to show all chat models.
-- Confirm you are on **VS Code 1.104+**.
+- Confirm you are on **VS Code 1.106+**.
 
 ## "Could not load models" error
 

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ChutesRawModel } from './chutesClient';
 
 const FALLBACK_CONTEXT = 32768;
+const MAX_FILTER_TERM_CHARS = 128;
 
 /** Reserved model id of Chutes' native router; selecting it delegates routing + fallback. */
 export const AUTO_MODEL_ID = 'model-router';
@@ -54,15 +55,69 @@ export function applyUserFilter(models: ChutesRawModel[], filter: string): Chute
     return models;
   }
   const matchers = terms.map((term) => {
-    try {
-      const re = new RegExp(term, 'i');
-      return (id: string) => re.test(id);
-    } catch {
-      const lower = term.toLowerCase();
-      return (id: string) => id.toLowerCase().includes(lower);
+    if (isSafeRegex(term)) {
+      try {
+        const re = new RegExp(term, 'i');
+        return (id: string) => re.test(id);
+      } catch {
+        // Invalid expressions retain the documented substring fallback.
+      }
     }
+    const lower = term.toLowerCase();
+    return (id: string) => id.toLowerCase().includes(lower);
   });
   return models.filter((m) => matchers.some((match) => match(m.id)));
+}
+
+/** Conservatively excludes regex constructs that can cause excessive backtracking. */
+function isSafeRegex(pattern: string): boolean {
+  if (pattern.length > MAX_FILTER_TERM_CHARS || /\\[1-9]/.test(pattern) || pattern.includes('(?')) {
+    return false;
+  }
+
+  const groups: Array<{ riskyContent: boolean }> = [];
+  let escaped = false;
+  let inCharacterClass = false;
+  for (let index = 0; index < pattern.length; index++) {
+    const char = pattern[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === '[') {
+      inCharacterClass = true;
+      continue;
+    }
+    if (char === ']' && inCharacterClass) {
+      inCharacterClass = false;
+      continue;
+    }
+    if (inCharacterClass) {
+      continue;
+    }
+    if (char === '(') {
+      groups.push({ riskyContent: false });
+      continue;
+    }
+    if (char === '|' || char === '*' || char === '+' || char === '{') {
+      for (const group of groups) {
+        group.riskyContent = true;
+      }
+      continue;
+    }
+    if (char === ')' && groups.length > 0) {
+      const group = groups.pop();
+      const next = pattern[index + 1];
+      if (group?.riskyContent && (next === '*' || next === '+' || next === '?' || next === '{')) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /** Maps a Chutes model to the VS Code chat model descriptor. */

@@ -19,7 +19,8 @@ enter this repository, its history, or the packaged VSIX.
   manager, a second lockfile, or edit the lockfile by hand.
 - Node.js 22 or newer for development and CI. The bundle targets `node20` because that is the runtime shipped by
   the supported VS Code extension host.
-- `engines.vscode` is `^1.104.0`, the release that introduced the language model chat provider API.
+- `engines.vscode` is `^1.106.0`, the minimum version that provides the image/data chat-part API used by the
+  extension.
 
 ## Architecture
 
@@ -49,6 +50,7 @@ Every command below exists in `package.json`; do not invent others.
 | Type-check                   | `npm run check-types`                        |
 | Lint (code only)             | `npm run lint:code`                          |
 | Lint (types + code + format) | `npm run lint`                               |
+| Dependency audit             | `npm run audit`                              |
 | Format / verify              | `npm run format` / `npm run format:check`    |
 | Offline tests                | `npm test`                                   |
 | Live tests                   | `npm run test:live` (requires `CHUTES_KEY`)  |
@@ -57,8 +59,8 @@ Every command below exists in `package.json`; do not invent others.
 | Package a VSIX               | `npm run vsix`                               |
 | Run in the editor            | `F5` in VS Code (Extension Development Host) |
 
-`npm run check` is the gate: strict TypeScript, Oxlint with `--deny-warnings`, Prettier verification, the offline
-test suite, a production bundle, and `vsce ls` to confirm the VSIX contents.
+`npm run check` is the gate: strict TypeScript, Oxlint with `--deny-warnings`, Prettier verification, a high-severity
+dependency audit, the offline test suite, a production bundle, and `vsce ls` to confirm the VSIX contents.
 
 ## Release and publishing
 

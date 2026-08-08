@@ -12,10 +12,13 @@ import { ChutesChatModelProvider } from '../src/provider';
 import { SecretStore } from '../src/secrets';
 import { formatUsageMarkdown, formatQuotasMarkdown } from '../src/chatParticipant';
 import { normalizeDashboardData } from '../src/usage/normalize';
+import { normalizeQuotaUsage } from '../src/usage/normalize';
+import { ChutesAccountClient } from '../src/usage/accountClient';
 import type { DashboardData } from '../src/usage/types';
 import type { ChutesRawModel } from '../src/chutesClient';
 import { DEFAULT_ROUTER_ENDPOINT } from '../src/config';
 import { ChutesClient } from '../src/chutesClient';
+import { readResponseTextLimited } from '../src/http';
 
 function model(partial: Partial<ChutesRawModel> & { id: string }): ChutesRawModel {
   return { input_modalities: ['text'], output_modalities: ['text'], ...partial };
@@ -54,6 +57,14 @@ test('applyUserFilter matches substrings, regex, and comma lists', () => {
   assert.deepEqual(
     applyUserFilter(models, 'ba.').map((m) => m.id),
     ['y/Bar', 'z/Baz']
+  );
+});
+
+test('applyUserFilter treats potentially catastrophic regexes as literal text', () => {
+  const models = [model({ id: 'literal/(a+)+$' }), model({ id: `x/${'a'.repeat(64)}!` })];
+  assert.deepEqual(
+    applyUserFilter(models, '(a+)+$').map((entry) => entry.id),
+    ['literal/(a+)+$']
   );
 });
 
@@ -113,6 +124,13 @@ test('ChutesClient drops malformed model rows', async () => {
   assert.deepEqual(await client.listModels('cpk_test'), [{ id: 'valid/model' }]);
 });
 
+test('response reader caps payloads and cancels the remainder', async () => {
+  assert.deepEqual(await readResponseTextLimited(new Response('123456'), 4), {
+    text: '1234',
+    truncated: true
+  });
+});
+
 test('ChutesClient parses the final SSE event without a trailing newline', async () => {
   const request = (async () =>
     new Response('data: {"choices":[{"delta":{"content":"done"}}]}', {
@@ -134,6 +152,102 @@ test('ChutesClient parses the final SSE event without a trailing newline', async
     deltas.push(delta);
   }
   assert.deepEqual(deltas, [{ content: 'done' }]);
+});
+
+test('ChutesClient propagates model-list cancellation to fetch', async () => {
+  let requestSignal: AbortSignal | undefined;
+  const request = ((_input: string | URL | Request, init?: RequestInit) => {
+    requestSignal = init?.signal ?? undefined;
+    return new Promise<Response>((_resolve, reject) => {
+      requestSignal?.addEventListener(
+        'abort',
+        () => reject(requestSignal?.reason ?? new DOMException('The operation was aborted', 'AbortError')),
+        { once: true }
+      );
+    });
+  }) as typeof fetch;
+  const client = new ChutesClient(
+    () => ({
+      endpoint: 'https://example.test/v1',
+      modelFilter: '',
+      requestTimeoutMs: 1000,
+      autoRouterEnabled: true,
+      routerEndpoint: DEFAULT_ROUTER_ENDPOINT
+    }),
+    request
+  );
+  const controller = new AbortController();
+  const pending = client.listModels('cpk_test', controller.signal);
+  controller.abort(new DOMException('The operation was aborted', 'AbortError'));
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(requestSignal?.aborted, true);
+});
+
+test('ChutesClient rejects oversized SSE events', async () => {
+  const request = (async () =>
+    new Response(`data: ${'x'.repeat(1024 * 1024)}\n`, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' }
+    })) as typeof fetch;
+  const client = new ChutesClient(
+    () => ({
+      endpoint: 'https://example.test/v1',
+      modelFilter: '',
+      requestTimeoutMs: 1000,
+      autoRouterEnabled: true,
+      routerEndpoint: DEFAULT_ROUTER_ENDPOINT
+    }),
+    request
+  );
+  await assert.rejects(async () => {
+    for await (const _delta of client.streamChatCompletion('cpk_test', {}, new AbortController().signal)) {
+      // No valid delta should be emitted from an oversized event.
+    }
+  }, /SSE event exceeded/);
+});
+
+test('ChutesClient marks malformed streamed tool-call fields', async () => {
+  const request = (async () =>
+    new Response(`data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, id: 42 }] } }] })}\n`, {
+      headers: { 'Content-Type': 'text/event-stream' }
+    })) as typeof fetch;
+  const client = new ChutesClient(
+    () => ({
+      endpoint: 'https://example.test/v1',
+      modelFilter: '',
+      requestTimeoutMs: 1000,
+      autoRouterEnabled: true,
+      routerEndpoint: DEFAULT_ROUTER_ENDPOINT
+    }),
+    request
+  );
+  const deltas = [];
+  for await (const delta of client.streamChatCompletion('cpk_test', {}, new AbortController().signal)) {
+    deltas.push(delta);
+  }
+  assert.deepEqual(deltas, [{ toolCallError: 'malformed tool call id' }]);
+});
+
+test('ChutesClient rejects a non-array streamed tool_calls field', async () => {
+  const request = (async () =>
+    new Response(`data: ${JSON.stringify({ choices: [{ delta: { tool_calls: {} } }] })}\n`, {
+      headers: { 'Content-Type': 'text/event-stream' }
+    })) as typeof fetch;
+  const client = new ChutesClient(
+    () => ({
+      endpoint: 'https://example.test/v1',
+      modelFilter: '',
+      requestTimeoutMs: 1000,
+      autoRouterEnabled: true,
+      routerEndpoint: DEFAULT_ROUTER_ENDPOINT
+    }),
+    request
+  );
+  const deltas = [];
+  for await (const delta of client.streamChatCompletion('cpk_test', {}, new AbortController().signal)) {
+    deltas.push(delta);
+  }
+  assert.deepEqual(deltas, [{ toolCallError: 'malformed tool calls' }]);
 });
 
 test('autoRouterInfo describes the virtual router model', () => {
@@ -220,7 +334,10 @@ function memSecrets(initial?: string): SecretStore {
 }
 
 const RAW: ChutesRawModel[] = [model({ id: 'a/Chat-One', supported_features: ['tools'], context_length: 8000 })];
-const noToken = {} as never;
+const noToken = {
+  isCancellationRequested: false,
+  onCancellationRequested: () => ({ dispose() {} })
+} as never;
 
 test('provider: silent + no key returns [] and never prompts', async () => {
   let prompts = 0;
@@ -317,6 +434,52 @@ test('provider: omits the Auto model when autoRouterEnabled is false', async () 
   }
 });
 
+test('provider: reserves model-router for the virtual Auto model', async () => {
+  const raw = [model({ id: AUTO_MODEL_ID }), ...RAW];
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), fakeClient(raw));
+  const info = await provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  assert.equal(info.filter((entry) => entry.id === AUTO_MODEL_ID).length, 1);
+  assert.equal(info.length, RAW.length + 1);
+});
+
+test('provider: cancellation prevents model-list requests', async () => {
+  let requests = 0;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), {
+    listModels: async () => (requests++, RAW)
+  } as never);
+  const cancelledToken = {
+    isCancellationRequested: true,
+    onCancellationRequested: () => ({ dispose() {} })
+  } as never;
+  assert.deepEqual(await provider.provideLanguageModelChatInformation({ silent: false }, cancelledToken), []);
+  assert.equal(requests, 0);
+});
+
+test('provider: invalidation prevents an in-flight model request from restoring stale cache', async () => {
+  let resolveFirst!: (models: ChutesRawModel[]) => void;
+  const firstResponse = new Promise<ChutesRawModel[]>((resolve) => {
+    resolveFirst = resolve;
+  });
+  let requests = 0;
+  const client = {
+    listModels: async () => {
+      requests++;
+      if (requests === 1) {
+        return firstResponse;
+      }
+      return RAW;
+    }
+  } as never;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+  const pending = provider.provideLanguageModelChatInformation({ silent: false }, noToken);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  provider.invalidate();
+  resolveFirst(RAW);
+  assert.deepEqual(await pending, []);
+  assert.ok((await provider.provideLanguageModelChatInformation({ silent: false }, noToken)).length > 0);
+  assert.equal(requests, 2);
+});
+
 test('provider: Auto model streams via the router endpoint; normal models do not', async () => {
   const captured: Array<string | undefined> = [];
   const client = {
@@ -349,7 +512,7 @@ test('provider: malformed tool arguments fail closed', async () => {
     listModels: async () => RAW,
     async *streamChatCompletion() {
       yield {
-        tool_calls: [{ index: 0, id: 'call_1', function: { name: 'dangerous_tool', arguments: '{' } }]
+        tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'dangerous_tool', arguments: '{' } }]
       };
     }
   } as never;
@@ -358,9 +521,51 @@ test('provider: malformed tool arguments fail closed', async () => {
   const token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) } as never;
 
   await assert.rejects(
-    provider.provideLanguageModelChatResponse(autoRouterInfo(), [], {} as never, progress, token),
+    provider.provideLanguageModelChatResponse(
+      autoRouterInfo(),
+      [],
+      { tools: [{ name: 'dangerous_tool', description: '', inputSchema: {} }] } as never,
+      progress,
+      token
+    ),
     /invalid arguments returned for tool/
   );
+});
+
+test('provider: rejects unsupported, incomplete, and unavailable tool calls', async () => {
+  const cases = [
+    {
+      call: { index: 0, id: 'call_1', type: 'not-a-function', function: { name: 'safe_tool', arguments: '{}' } },
+      error: /unsupported tool call type/
+    },
+    {
+      call: { index: 0, type: 'function', function: { name: 'safe_tool', arguments: '{}' } },
+      error: /incomplete tool call/
+    },
+    {
+      call: { index: 0, id: 'call_1', type: 'function', function: { name: 'other_tool', arguments: '{}' } },
+      error: /unavailable tool/
+    }
+  ];
+  for (const { call, error } of cases) {
+    const client = {
+      listModels: async () => RAW,
+      async *streamChatCompletion() {
+        yield { tool_calls: [call] };
+      }
+    } as never;
+    const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+    await assert.rejects(
+      provider.provideLanguageModelChatResponse(
+        autoRouterInfo(),
+        [],
+        { tools: [{ name: 'safe_tool', description: '', inputSchema: {} }] } as never,
+        { report() {} } as never,
+        noToken
+      ),
+      error
+    );
+  }
 });
 
 test('provider: cancelling mid-stream drops half-assembled tool calls', async () => {
@@ -371,7 +576,14 @@ test('provider: cancelling mid-stream drops half-assembled tool calls', async ()
     async *streamChatCompletion() {
       // Truncated JSON, exactly what a stream cut short by the user looks like.
       yield {
-        tool_calls: [{ index: 0, id: 'call_1', function: { name: 'dangerous_tool', arguments: '{"path": "sr' } }]
+        tool_calls: [
+          {
+            index: 0,
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'dangerous_tool', arguments: '{"path": "sr' }
+          }
+        ]
       };
       cancelled = true;
       for (const listener of listeners) {
@@ -394,7 +606,13 @@ test('provider: cancelling mid-stream drops half-assembled tool calls', async ()
   } as never;
 
   // Must resolve (no "invalid arguments" error) and must not run the tool.
-  await provider.provideLanguageModelChatResponse(autoRouterInfo(), [], {} as never, progress, token);
+  await provider.provideLanguageModelChatResponse(
+    autoRouterInfo(),
+    [],
+    { tools: [{ name: 'dangerous_tool', description: '', inputSchema: {} }] } as never,
+    progress,
+    token
+  );
   assert.ok(reported.every((part) => !(part instanceof vscode.LanguageModelToolCallPart)));
 });
 
@@ -514,4 +732,113 @@ test('normalizeDashboardData parses spend windows and derives the plan', () => {
   assert.ok(Math.abs((billing?.used ?? 0) - 55.339) < 0.001);
   assert.equal(billing?.limit, 100);
   assert.ok(data.windows.some((w) => w.kind === 'daily-requests'));
+});
+
+test('quota normalization preserves unlimited and rejects negative API values', () => {
+  assert.deepEqual(normalizeQuotaUsage({ a: { used: 3, quota: 100 }, b: { used: 2, quota: 0 } }), {
+    used: 5,
+    quota: 0,
+    trusted: true
+  });
+  assert.deepEqual(normalizeQuotaUsage({ used: -1, quota: -10 }), null);
+
+  const data = normalizeDashboardData(
+    {},
+    [
+      { model: 'Unlimited', quota: 0 },
+      { model: 'Finite', quota: 100 },
+      { model: 'Invalid', quota: -1 }
+    ] as never,
+    null,
+    null,
+    null
+  );
+  const daily = data.windows.find((window) => window.kind === 'daily-requests');
+  assert.equal(daily?.limit, 0);
+  assert.equal(data.quotas[2].quota, null);
+});
+
+test('preferred quota usage can provide a daily window when the quota list is empty', () => {
+  const data = normalizeDashboardData({}, [], null, { used: 2, quota: 100 }, null);
+  const daily = data.windows.find((window) => window.kind === 'daily-requests');
+  assert.equal(daily?.used, 2);
+  assert.equal(daily?.limit, 100);
+});
+
+test('account client caps quota fallback fan-out', async () => {
+  let perChuteRequests = 0;
+  const quotas = Array.from({ length: 51 }, (_, index) => ({ chute_id: `chute-${index}`, quota: 10 }));
+  const request = (async (input: string | URL | Request) => {
+    const path = new URL(String(input)).pathname;
+    if (path === '/users/me/subscription_usage') {
+      return Response.json({});
+    }
+    if (path === '/users/me/quotas') {
+      return Response.json(quotas);
+    }
+    if (path === '/users/me/quota_usage/me') {
+      return Response.json({});
+    }
+    if (path === '/invocations/stats/llm') {
+      return Response.json([]);
+    }
+    perChuteRequests++;
+    return Response.json({ used: 0, quota: 10 });
+  }) as typeof fetch;
+  const payload = await new ChutesAccountClient('cpk_test', request).getDashboardPayload();
+  assert.equal(payload.quotaUsageFallback, null);
+  assert.equal(perChuteRequests, 0);
+});
+
+test('account client limits concurrent quota fallback requests', async () => {
+  let active = 0;
+  let maxActive = 0;
+  const quotas = Array.from({ length: 12 }, (_, index) => ({ chute_id: `chute-${index}`, quota: 10 }));
+  const request = (async (input: string | URL | Request) => {
+    const path = new URL(String(input)).pathname;
+    if (path === '/users/me/subscription_usage') {
+      return Response.json({});
+    }
+    if (path === '/users/me/quotas') {
+      return Response.json(quotas);
+    }
+    if (path === '/users/me/quota_usage/me') {
+      return Response.json({});
+    }
+    if (path === '/invocations/stats/llm') {
+      return Response.json([]);
+    }
+    active++;
+    maxActive = Math.max(maxActive, active);
+    await new Promise<void>((resolve) => setTimeout(resolve, 2));
+    active--;
+    return Response.json({ used: 0, quota: 10 });
+  }) as typeof fetch;
+  const payload = await new ChutesAccountClient('cpk_test', request).getDashboardPayload();
+  assert.equal(Object.keys(payload.quotaUsageFallback ?? {}).length, quotas.length);
+  assert.ok(maxActive <= 4);
+});
+
+test('account client ignores negative quota-usage sentinels and uses fallback data', async () => {
+  let fallbackRequests = 0;
+  const request = (async (input: string | URL | Request) => {
+    const path = new URL(String(input)).pathname;
+    if (path === '/users/me/subscription_usage') {
+      return Response.json({});
+    }
+    if (path === '/users/me/quotas') {
+      return Response.json([{ chute_id: 'chute-1', quota: 10 }]);
+    }
+    if (path === '/users/me/quota_usage/me') {
+      return Response.json({ used: -1, quota: -1 });
+    }
+    if (path === '/invocations/stats/llm') {
+      return Response.json([]);
+    }
+    fallbackRequests++;
+    return Response.json({ used: 2, quota: 10 });
+  }) as typeof fetch;
+  const payload = await new ChutesAccountClient('cpk_test', request).getDashboardPayload();
+  assert.equal(fallbackRequests, 1);
+  assert.deepEqual(payload.quotaUsageFallback, { 'chute-1': { used: 2, quota: 10 } });
 });
