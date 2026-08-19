@@ -126,8 +126,11 @@ Press `F5` to launch an Extension Development Host. See [CONTRIBUTING.md](CONTRI
 
 This independently developed extension is not affiliated with, sponsored by, endorsed by, or approved by Chutes. Chutes, the Chutes logo, and all other third-party names, logos, services, models, and marks remain the property of their respective owners. The MIT License covers only project-owned code and materials; it does not license those third-party rights. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
-## Support & License
+## Support
 
 - Issues: [GitHub Issues](https://github.com/TheStreamCode/chutes-model-provider-vscode/issues)
 - Support the project: [github.com/sponsors/TheStreamCode](https://github.com/sponsors/TheStreamCode)
-- MIT License — © 2026 Michael Gasperini (Mikesoft)
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
