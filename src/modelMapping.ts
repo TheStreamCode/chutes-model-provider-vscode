@@ -8,6 +8,27 @@ const MAX_FILTER_TERM_CHARS = 128;
 export const AUTO_MODEL_ID = 'model-router';
 
 /**
+ * Model string sent to the API when Auto is selected: Chutes' saved-routing-pool
+ * alias, resolved server-side against the pool configured at chutes.ai/app.
+ */
+export const AUTO_ROUTING_MODEL = 'default';
+
+/**
+ * Live inline pool sent when the saved-pool alias does not resolve.
+ * Chat-capable catalogue ids, picked by lowest time-to-first-token.
+ */
+export function liveAutoPoolModel(models: ChutesRawModel[]): string | undefined {
+  const ids = models
+    .filter(isChatModel)
+    .map((entry) => entry.id.trim())
+    .filter((id) => id.length > 0 && id !== AUTO_MODEL_ID && id !== AUTO_ROUTING_MODEL && !id.includes(','));
+  if (ids.length === 0) {
+    return undefined;
+  }
+  return `${ids.join(',')}:latency`;
+}
+
+/**
  * Synthetic descriptor for the virtual "Chutes Auto" model. Selecting it sends the
  * request to Chutes' native router, which classifies the prompt and fails over
  * automatically when a model is cold/unavailable. Context limits are a conservative

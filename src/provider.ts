@@ -2,7 +2,15 @@ import * as vscode from 'vscode';
 import { SecretStore } from './secrets';
 import { ChutesClient, ChutesApiError } from './chutesClient';
 import { getConfig } from './config';
-import { isChatModel, applyUserFilter, toChatInformation, autoRouterInfo, AUTO_MODEL_ID } from './modelMapping';
+import {
+  isChatModel,
+  applyUserFilter,
+  toChatInformation,
+  autoRouterInfo,
+  AUTO_MODEL_ID,
+  AUTO_ROUTING_MODEL,
+  liveAutoPoolModel
+} from './modelMapping';
 import { convertMessages, convertTools, convertToolMode, messageToText } from './messageConverter';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -123,13 +131,16 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       return;
     }
 
-    // The virtual "Auto" model routes to Chutes' native router endpoint instead of
-    // the configured one; everything else (OpenAI-compatible body, SSE) is identical.
+    // The virtual "Auto" model routes through `chutes.routerEndpoint` (the same
+    // OpenAI-compatible host by default) using Chutes' native routing grammar:
+    // the saved-pool alias `default`, stepped down once to a compiled-in inline
+    // pool when the account has none configured. Everything else — OpenAI-
+    // compatible body, SSE — is identical to concrete models.
     const isAuto = model.id === AUTO_MODEL_ID;
     const endpointOverride = isAuto ? getConfig().routerEndpoint : undefined;
 
     const body: Record<string, unknown> = {
-      model: model.id,
+      model: isAuto ? AUTO_ROUTING_MODEL : model.id,
       messages: convertMessages(messages)
     };
 
@@ -157,8 +168,13 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
     const toolCalls = new Map<number, { id?: string; type?: string; name?: string; args: string }>();
     const availableToolNames = new Set(options.tools?.map((tool) => tool.name) ?? []);
 
-    try {
-      for await (const delta of this.client.streamChatCompletion(apiKey, body, controller.signal, endpointOverride)) {
+    const consumeStream = async (streamBody: Record<string, unknown>): Promise<void> => {
+      for await (const delta of this.client.streamChatCompletion(
+        apiKey,
+        streamBody,
+        controller.signal,
+        endpointOverride
+      )) {
         if (token.isCancellationRequested) {
           break;
         }
@@ -205,6 +221,35 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
             toolCalls.set(tc.index, current);
           }
         }
+      }
+    };
+
+    try {
+      try {
+        await consumeStream(body);
+      } catch (err) {
+        // An account without a saved routing pool gets a 404 for the alias.
+        // That failure surfaces before any delta is emitted, so stepping down
+        // once to a live catalogue pool replays nothing already shown.
+        const unresolved =
+          isAuto &&
+          err instanceof ChutesApiError &&
+          err.status === 404 &&
+          err.message.includes('model not found') &&
+          !controller.signal.aborted &&
+          !token.isCancellationRequested;
+        if (!unresolved) {
+          throw err;
+        }
+        const catalog = await this.client.listModels(apiKey, controller.signal);
+        if (controller.signal.aborted || token.isCancellationRequested) {
+          return;
+        }
+        const pool = liveAutoPoolModel(catalog);
+        if (!pool) {
+          throw err;
+        }
+        await consumeStream({ ...body, model: pool });
       }
     } catch (err) {
       if (controller.signal.aborted || token.isCancellationRequested) {

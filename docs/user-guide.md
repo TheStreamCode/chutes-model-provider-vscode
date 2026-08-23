@@ -14,6 +14,12 @@ You can also run **`Chutes AI: Manage API Key`** from the Command Palette at any
 
 Open Chat, click the model dropdown, and select a Chutes model. The list is fetched live from `GET /v1/models` and cached briefly. Run **`Chutes AI: Refresh Models`** to force a refresh.
 
+**Auto (router)** is the first entry. It sends Chutes' native routing alias
+`default` (the pool saved at chutes.ai/app → Model Routing). If that alias
+cannot resolve, the extension retries once with a live inline pool from the
+current catalogue (fastest warm model first) so Auto works without a dashboard
+setup. Pick a concrete catalogue id to pin one model.
+
 ## Chat modes
 
 - **Ask / Edit** — any Chutes chat model works.
@@ -37,13 +43,13 @@ services you trust.
 
 ## Settings
 
-| Setting                    | Default                                  | Description                                                                                                                                                            |
-| -------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chutes.endpoint`          | `https://llm.chutes.ai/v1`               | OpenAI-compatible API base URL.                                                                                                                                        |
-| `chutes.modelFilter`       | _(empty)_                                | Comma-separated terms (substring or safe regex) matched against model ids. Unsafe or invalid regexes are treated literally. Example: `deepseek, qwen` or `Qwen3.*TEE`. |
-| `chutes.requestTimeoutMs`  | `15000`                                  | Timeout for fetching the model list.                                                                                                                                   |
-| `chutes.autoRouterEnabled` | `true`                                   | Show the **Auto (router)** model with automatic model selection and fallback.                                                                                          |
-| `chutes.routerEndpoint`    | `https://model-router-ten.vercel.app/v1` | OpenAI-compatible endpoint used only by **Auto (router)**.                                                                                                             |
+| Setting                    | Default                    | Description                                                                                                                                                            |
+| -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chutes.endpoint`          | `https://llm.chutes.ai/v1` | OpenAI-compatible API base URL.                                                                                                                                        |
+| `chutes.modelFilter`       | _(empty)_                  | Comma-separated terms (substring or safe regex) matched against model ids. Unsafe or invalid regexes are treated literally. Example: `deepseek, qwen` or `Qwen3.*TEE`. |
+| `chutes.requestTimeoutMs`  | `15000`                    | Timeout for fetching the model list.                                                                                                                                   |
+| `chutes.autoRouterEnabled` | `true`                     | Show the **Auto (router)** model with automatic model selection and fallback.                                                                                          |
+| `chutes.routerEndpoint`    | `https://llm.chutes.ai/v1` | OpenAI-compatible endpoint used only by **Auto (router)**; Chutes resolves routing natively on this host.                                                              |
 
 Setting changes refresh the model list immediately. A custom model or router endpoint receives your API key and request content; configure only services you trust.
 
