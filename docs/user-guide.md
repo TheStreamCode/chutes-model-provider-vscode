@@ -14,6 +14,12 @@ You can also run **`Chutes AI: Manage API Key`** from the Command Palette at any
 
 Open Chat, click the model dropdown, and select a Chutes model. The list is fetched live from `GET /v1/models` and cached briefly. Run **`Chutes AI: Refresh Models`** to force a refresh.
 
+**Auto (router)** is the first entry. It sends Chutes' native routing alias
+`default` (the pool saved at chutes.ai/app → Model Routing). If that alias
+cannot resolve, the extension retries once with a live inline pool from the
+current catalogue (fastest warm model first) so Auto works without a dashboard
+setup. Pick a concrete catalogue id to pin one model.
+
 ## Chat modes
 
 - **Ask / Edit** — any Chutes chat model works.

@@ -94,7 +94,7 @@ It uses the same API key you configured for the provider. Note: VS Code does not
 
 Pick **Auto (router)** from the model list to stop worrying about which specific model is currently warm. Your request is sent to Chutes with the native routing alias `default`, and Chutes classifies it (general, reasoning, programming, vision…), routes it to a suitable model, and **fails over automatically** if that model is cold or unavailable. This is handy because models on Chutes warm up and cool down over time, and a cold model can otherwise return an error.
 
-Selection and fallback are performed by Chutes' server-side routing, not by this extension. If your account has no routing pool configured at [chutes.ai/app](https://chutes.ai/app) (Model Routing), the extension steps down once to a built-in inline pool (`Qwen/Qwen3.5-397B-A17B-TEE,zai-org/GLM-5.2-TEE`); a pool you save on the dashboard takes priority. It is enabled by default; turn it off with `chutes.autoRouterEnabled`, or route it through a custom gateway with `chutes.routerEndpoint`.
+Selection and fallback are performed by Chutes' server-side routing, not by this extension. If your account has no routing pool configured at [chutes.ai/app](https://chutes.ai/app) (Model Routing), the extension steps down once to a live inline pool built from the current catalogue (fastest warm model first); a pool you save on the dashboard takes priority. It is enabled by default; turn it off with `chutes.autoRouterEnabled`, or route it through a custom gateway with `chutes.routerEndpoint`.
 
 ## Privacy
 

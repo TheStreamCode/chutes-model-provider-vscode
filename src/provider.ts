@@ -9,7 +9,7 @@ import {
   autoRouterInfo,
   AUTO_MODEL_ID,
   AUTO_ROUTING_MODEL,
-  AUTO_FALLBACK_MODEL
+  liveAutoPoolModel
 } from './modelMapping';
 import { convertMessages, convertTools, convertToolMode, messageToText } from './messageConverter';
 
@@ -230,7 +230,7 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
       } catch (err) {
         // An account without a saved routing pool gets a 404 for the alias.
         // That failure surfaces before any delta is emitted, so stepping down
-        // once to the compiled-in inline pool replays nothing already shown.
+        // once to a live catalogue pool replays nothing already shown.
         const unresolved =
           isAuto &&
           err instanceof ChutesApiError &&
@@ -241,7 +241,15 @@ export class ChutesChatModelProvider implements vscode.LanguageModelChatProvider
         if (!unresolved) {
           throw err;
         }
-        await consumeStream({ ...body, model: AUTO_FALLBACK_MODEL });
+        const catalog = await this.client.listModels(apiKey, controller.signal);
+        if (controller.signal.aborted || token.isCancellationRequested) {
+          return;
+        }
+        const pool = liveAutoPoolModel(catalog);
+        if (!pool) {
+          throw err;
+        }
+        await consumeStream({ ...body, model: pool });
       }
     } catch (err) {
       if (controller.signal.aborted || token.isCancellationRequested) {

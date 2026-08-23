@@ -14,11 +14,19 @@ export const AUTO_MODEL_ID = 'model-router';
 export const AUTO_ROUTING_MODEL = 'default';
 
 /**
- * Compiled-in inline failover pool used once, when the API reports that the
- * saved-pool alias does not resolve (accounts without a configured pool).
- * Both ids are TEE models verified serving on the live inference host.
+ * Live inline pool sent when the saved-pool alias does not resolve.
+ * Chat-capable catalogue ids, picked by lowest time-to-first-token.
  */
-export const AUTO_FALLBACK_MODEL = 'Qwen/Qwen3.5-397B-A17B-TEE,zai-org/GLM-5.2-TEE';
+export function liveAutoPoolModel(models: ChutesRawModel[]): string | undefined {
+  const ids = models
+    .filter(isChatModel)
+    .map((entry) => entry.id.trim())
+    .filter((id) => id.length > 0 && id !== AUTO_MODEL_ID && id !== AUTO_ROUTING_MODEL && !id.includes(','));
+  if (ids.length === 0) {
+    return undefined;
+  }
+  return `${ids.join(',')}:latency`;
+}
 
 /**
  * Synthetic descriptor for the virtual "Chutes Auto" model. Selecting it sends the

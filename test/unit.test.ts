@@ -12,7 +12,7 @@ import {
   toChatInformation,
   autoRouterInfo,
   AUTO_MODEL_ID,
-  AUTO_FALLBACK_MODEL
+  liveAutoPoolModel
 } from '../src/modelMapping';
 import { convertMessages, convertTools, convertToolMode } from '../src/messageConverter';
 import { ChutesChatModelProvider } from '../src/provider';
@@ -269,6 +269,19 @@ test('autoRouterInfo describes the virtual router model', () => {
   // Picker copy is user-facing: keep it ASCII-safe English like every other label.
   assert.equal(info.name, 'Auto (router)');
   assert.match(info.detail ?? '', /^Auto · native routing \+ fallback$/);
+});
+
+test('liveAutoPoolModel joins chat ids with a latency strategy', () => {
+  assert.equal(
+    liveAutoPoolModel([
+      model({ id: 'a/Chat' }),
+      model({ id: 'default' }),
+      model({ id: 'b/Image', output_modalities: ['image'] }),
+      model({ id: 'c/Two' })
+    ]),
+    'a/Chat,c/Two:latency'
+  );
+  assert.equal(liveAutoPoolModel([model({ id: 'default' })]), undefined);
 });
 
 test('convertMessages: plain user text', () => {
@@ -555,7 +568,7 @@ test('provider: Auto steps down to the inline pool when the saved alias is unres
 
   assert.equal(bodies.length, 2);
   assert.equal(bodies[0].model, 'default');
-  assert.equal(bodies[1].model, AUTO_FALLBACK_MODEL);
+  assert.equal(bodies[1].model, liveAutoPoolModel(RAW));
 });
 
 test('provider: only an unresolved-alias 404 triggers the Auto fallback', async () => {

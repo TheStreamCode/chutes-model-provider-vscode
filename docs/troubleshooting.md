@@ -17,6 +17,19 @@
 
 VS Code only lists tool-calling models in agent mode. If a model does not advertise tool support in the Chutes API, it appears only in Ask/Edit modes.
 
+## Auto (router) fails with DEPLOYMENT_NOT_FOUND or "model not found"
+
+Chutes retired the standalone router at `model-router-ten.vercel.app`. Auto now
+sends the native alias `default` to `https://llm.chutes.ai/v1` and, if the
+account has no routing pool saved at [chutes.ai/app](https://chutes.ai/app)
+(Model Routing), steps down once to a live inline pool from the current
+catalogue (fastest warm model first).
+
+- If `chutes.routerEndpoint` still points at the old Vercel host, clear the
+  setting so it uses the new default (`https://llm.chutes.ai/v1`).
+- Update to extension 0.4.6 or later. 0.4.5 and earlier always hit the dead
+  deployment.
+
 ## Requests fail with HTTP 401 / 403
 
 The API key is missing, invalid, or lacks access to the selected model. Re-run **`Chutes AI: Manage API Key`** and paste a current key.
