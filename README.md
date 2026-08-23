@@ -27,7 +27,7 @@ You can also set the key anytime via **`Chutes AI: Manage API Key`** in the Comm
 ## ✨ Features
 
 - **Automatic model discovery** — the full Chutes catalogue is fetched from the API; nothing to maintain by hand.
-- **Auto model with fallback** — a virtual **Auto (router)** model delegates selection to Chutes' native router, which picks a model per task and fails over automatically when one is cold or unavailable.
+- **Auto model with fallback** — a virtual **Auto (router)** model delegates selection to Chutes' native model routing, which picks a model per task and fails over automatically when one is cold or unavailable. Works on every account: without a configured routing pool it falls back to a built-in inline pool.
 - **Native chat integration** — models appear in **Ask**, **Edit** and **Agent** modes; tool-capable models light up agent mode.
 - **Vision** — models that accept image input can read images attached to a chat.
 - **Streaming** — responses stream token by token and honour cancellation.
@@ -64,13 +64,13 @@ unlimited data. It does not run a local server, persist prompts or collect telem
 
 ## Settings
 
-| Setting                    | Default                                  | Description                                                                                                                                                                                                               |
-| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chutes.endpoint`          | `https://llm.chutes.ai/v1`               | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints.                                                                                                                                           |
-| `chutes.modelFilter`       | _(empty)_                                | Restrict which models appear. Comma-separated terms use a case-insensitive substring or safe regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`); unsafe or invalid regexes are treated literally. Empty shows all chat models. |
-| `chutes.requestTimeoutMs`  | `15000`                                  | Timeout (ms) for fetching the model list. Does not limit streaming responses.                                                                                                                                             |
-| `chutes.autoRouterEnabled` | `true`                                   | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native router.                                                                                               |
-| `chutes.routerEndpoint`    | `https://model-router-ten.vercel.app/v1` | Base URL of Chutes' native router, used by the **Auto (router)** model. Change only for a self-hosted router.                                                                                                             |
+| Setting                    | Default                    | Description                                                                                                                                                                                                               |
+| -------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chutes.endpoint`          | `https://llm.chutes.ai/v1` | OpenAI-compatible API base URL. Change only for self-hosted or proxy endpoints.                                                                                                                                           |
+| `chutes.modelFilter`       | _(empty)_                  | Restrict which models appear. Comma-separated terms use a case-insensitive substring or safe regex (e.g. `deepseek, qwen` or `Qwen3.*TEE`); unsafe or invalid regexes are treated literally. Empty shows all chat models. |
+| `chutes.requestTimeoutMs`  | `15000`                    | Timeout (ms) for fetching the model list. Does not limit streaming responses.                                                                                                                                             |
+| `chutes.autoRouterEnabled` | `true`                     | Show the **Auto (router)** model that delegates selection and automatic cold/unavailable fallback to Chutes' native model routing.                                                                                        |
+| `chutes.routerEndpoint`    | `https://llm.chutes.ai/v1` | Base URL the **Auto (router)** model routes through. Chutes resolves routing natively on this host; change it only for a custom gateway.                                                                                  |
 
 Changes to any `chutes.*` setting invalidate the model cache immediately; no window reload is required.
 
@@ -92,9 +92,9 @@ It uses the same API key you configured for the provider. Note: VS Code does not
 
 ## Auto model (router)
 
-Pick **Auto (router)** from the model list to stop worrying about which specific model is currently warm. Your prompt is sent to Chutes' native model router, which classifies it (general, reasoning, programming, vision…), routes it to a suitable model, and **fails over automatically** if that model is cold or unavailable. This is handy because models on Chutes warm up and cool down over time, and a cold model can otherwise return an error.
+Pick **Auto (router)** from the model list to stop worrying about which specific model is currently warm. Your request is sent to Chutes with the native routing alias `default`, and Chutes classifies it (general, reasoning, programming, vision…), routes it to a suitable model, and **fails over automatically** if that model is cold or unavailable. This is handy because models on Chutes warm up and cool down over time, and a cold model can otherwise return an error.
 
-Selection and fallback are performed by Chutes' router, not by this extension. It is enabled by default; turn it off with `chutes.autoRouterEnabled`, or point it at a self-hosted router with `chutes.routerEndpoint`.
+Selection and fallback are performed by Chutes' server-side routing, not by this extension. If your account has no routing pool configured at [chutes.ai/app](https://chutes.ai/app) (Model Routing), the extension steps down once to a built-in inline pool (`Qwen/Qwen3.5-397B-A17B-TEE,zai-org/GLM-5.2-TEE`); a pool you save on the dashboard takes priority. It is enabled by default; turn it off with `chutes.autoRouterEnabled`, or route it through a custom gateway with `chutes.routerEndpoint`.
 
 ## Privacy
 

@@ -6,7 +6,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as vscode from 'vscode';
-import { isChatModel, applyUserFilter, toChatInformation, autoRouterInfo, AUTO_MODEL_ID } from '../src/modelMapping';
+import {
+  isChatModel,
+  applyUserFilter,
+  toChatInformation,
+  autoRouterInfo,
+  AUTO_MODEL_ID,
+  AUTO_FALLBACK_MODEL
+} from '../src/modelMapping';
 import { convertMessages, convertTools, convertToolMode } from '../src/messageConverter';
 import { ChutesChatModelProvider } from '../src/provider';
 import { SecretStore } from '../src/secrets';
@@ -17,7 +24,7 @@ import { ChutesAccountClient } from '../src/usage/accountClient';
 import type { DashboardData } from '../src/usage/types';
 import type { ChutesRawModel } from '../src/chutesClient';
 import { DEFAULT_ROUTER_ENDPOINT } from '../src/config';
-import { ChutesClient } from '../src/chutesClient';
+import { ChutesClient, ChutesApiError } from '../src/chutesClient';
 import { readResponseTextLimited } from '../src/http';
 
 function model(partial: Partial<ChutesRawModel> & { id: string }): ChutesRawModel {
@@ -485,10 +492,12 @@ test('provider: invalidation prevents an in-flight model request from restoring 
 
 test('provider: Auto model streams via the router endpoint; normal models do not', async () => {
   const captured: Array<string | undefined> = [];
+  const bodies: Array<Record<string, unknown>> = [];
   const client = {
     listModels: async () => RAW,
-    async *streamChatCompletion(_k: string, _b: unknown, _s: unknown, endpointOverride?: string) {
+    async *streamChatCompletion(_k: string, body: Record<string, unknown>, _s: unknown, endpointOverride?: string) {
       captured.push(endpointOverride);
+      bodies.push(body);
       yield {};
     }
   } as never;
@@ -508,6 +517,110 @@ test('provider: Auto model streams via the router endpoint; normal models do not
 
   assert.equal(captured[0], DEFAULT_ROUTER_ENDPOINT);
   assert.equal(captured[1], undefined);
+  // Auto sends Chutes' native saved-pool alias, not the virtual picker id.
+  assert.equal(bodies[0].model, 'default');
+  assert.equal(bodies[1].model, 'a/Chat-One');
+});
+
+test('provider: Auto steps down to the inline pool when the saved alias is unresolved', async () => {
+  const bodies: Array<Record<string, unknown>> = [];
+  const client = {
+    listModels: async () => RAW,
+    async *streamChatCompletion(_k: string, body: Record<string, unknown>) {
+      bodies.push(body);
+      if (body.model === 'default') {
+        // Rejects before the first yield, exactly like a failed fetch.
+        yield await Promise.reject(
+          new ChutesApiError('Chutes: chat/completions failed (HTTP 404): {"detail":"model not found: default"}', 404)
+        );
+      }
+      yield { content: 'ok' };
+    }
+  } as never;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+  const progress = {
+    report(v: unknown) {
+      void v;
+    }
+  } as never;
+  const token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) } as never;
+
+  await provider.provideLanguageModelChatResponse(
+    autoRouterInfo(),
+    [userMsg(new vscode.LanguageModelTextPart('hi'))],
+    {} as never,
+    progress,
+    token
+  );
+
+  assert.equal(bodies.length, 2);
+  assert.equal(bodies[0].model, 'default');
+  assert.equal(bodies[1].model, AUTO_FALLBACK_MODEL);
+});
+
+test('provider: only an unresolved-alias 404 triggers the Auto fallback', async () => {
+  const cases = [
+    { error: new ChutesApiError('Chutes: chat/completions failed (HTTP 500): overloaded', 500), retry: false },
+    {
+      error: new ChutesApiError('Chutes: chat/completions failed (HTTP 404): model not found', undefined),
+      retry: false
+    },
+    {
+      error: new ChutesApiError(
+        'Chutes: chat/completions failed (HTTP 404): {"detail":"model not found: default"}',
+        404
+      ),
+      retry: true
+    }
+  ];
+  for (const { error, retry } of cases) {
+    let attempts = 0;
+    const client = {
+      listModels: async () => RAW,
+      async *streamChatCompletion() {
+        attempts++;
+        // Rejects before the first yield, exactly like a failed fetch.
+        yield await Promise.reject(error);
+      }
+    } as never;
+    const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+    await assert.rejects(
+      provider.provideLanguageModelChatResponse(
+        autoRouterInfo(),
+        [userMsg(new vscode.LanguageModelTextPart('hi'))],
+        {} as never,
+        { report() {} } as never,
+        noToken
+      ),
+      /chat\/completions failed/
+    );
+    assert.equal(attempts, retry ? 2 : 1);
+  }
+});
+
+test('provider: concrete models never trigger the alias fallback', async () => {
+  let attempts = 0;
+  const client = {
+    listModels: async () => RAW,
+    async *streamChatCompletion() {
+      attempts++;
+      yield await Promise.reject(
+        new ChutesApiError('Chutes: chat/completions failed (HTTP 404): {"detail":"model not found: a/Chat-One"}', 404)
+      );
+    }
+  } as never;
+  const provider = new ChutesChatModelProvider(memSecrets('cpk_test'), client);
+  await assert.rejects(
+    provider.provideLanguageModelChatResponse(
+      toChatInformation(model({ id: 'a/Chat-One' })),
+      [userMsg(new vscode.LanguageModelTextPart('hi'))],
+      {} as never,
+      { report() {} } as never,
+      noToken
+    ),
+    /chat\/completions failed/
+  );
+  assert.equal(attempts, 1);
 });
 
 test('provider: malformed tool arguments fail closed', async () => {

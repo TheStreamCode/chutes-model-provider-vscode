@@ -8,6 +8,19 @@ const MAX_FILTER_TERM_CHARS = 128;
 export const AUTO_MODEL_ID = 'model-router';
 
 /**
+ * Model string sent to the API when Auto is selected: Chutes' saved-routing-pool
+ * alias, resolved server-side against the pool configured at chutes.ai/app.
+ */
+export const AUTO_ROUTING_MODEL = 'default';
+
+/**
+ * Compiled-in inline failover pool used once, when the API reports that the
+ * saved-pool alias does not resolve (accounts without a configured pool).
+ * Both ids are TEE models verified serving on the live inference host.
+ */
+export const AUTO_FALLBACK_MODEL = 'Qwen/Qwen3.5-397B-A17B-TEE,zai-org/GLM-5.2-TEE';
+
+/**
  * Synthetic descriptor for the virtual "Chutes Auto" model. Selecting it sends the
  * request to Chutes' native router, which classifies the prompt and fails over
  * automatically when a model is cold/unavailable. Context limits are a conservative

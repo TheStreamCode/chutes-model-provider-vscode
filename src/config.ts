@@ -1,7 +1,12 @@
 import * as vscode from 'vscode';
 
 export const DEFAULT_ENDPOINT = 'https://llm.chutes.ai/v1';
-export const DEFAULT_ROUTER_ENDPOINT = 'https://model-router-ten.vercel.app/v1';
+/**
+ * Auto routes through the same OpenAI-compatible host: Chutes resolves
+ * routing natively from the `model` field, so no separate router deployment
+ * exists anymore. The setting stays for custom gateways only.
+ */
+export const DEFAULT_ROUTER_ENDPOINT = 'https://llm.chutes.ai/v1';
 
 export interface ChutesConfig {
   /** Base URL of the OpenAI-compatible API, without a trailing slash. */

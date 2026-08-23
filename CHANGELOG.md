@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.4.6 - 2026-08-23
+
+### Fixed
+
+- **Auto (router) works again.** Chutes retired the standalone router deployment
+  (`model-router-ten.vercel.app` answered `DEPLOYMENT_NOT_FOUND`), so every Auto
+  request failed with an HTTP 404. Auto now sends Chutes' native routing alias
+  `default` to the same OpenAI-compatible host as the other models, and steps
+  down once to a built-in inline failover pool
+  (`Qwen/Qwen3.5-397B-A17B-TEE,zai-org/GLM-5.2-TEE`) when the account has no
+  routing pool saved at chutes.ai/app → Model Routing. A saved pool takes
+  priority.
+
+### Changed
+
+- The `chutes.routerEndpoint` default is now `https://llm.chutes.ai/v1`; the
+  setting remains for custom gateways only.
+
 ## 0.4.5 - 2026-08-08
 
 ### Fixed

@@ -37,13 +37,13 @@ services you trust.
 
 ## Settings
 
-| Setting                    | Default                                  | Description                                                                                                                                                            |
-| -------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chutes.endpoint`          | `https://llm.chutes.ai/v1`               | OpenAI-compatible API base URL.                                                                                                                                        |
-| `chutes.modelFilter`       | _(empty)_                                | Comma-separated terms (substring or safe regex) matched against model ids. Unsafe or invalid regexes are treated literally. Example: `deepseek, qwen` or `Qwen3.*TEE`. |
-| `chutes.requestTimeoutMs`  | `15000`                                  | Timeout for fetching the model list.                                                                                                                                   |
-| `chutes.autoRouterEnabled` | `true`                                   | Show the **Auto (router)** model with automatic model selection and fallback.                                                                                          |
-| `chutes.routerEndpoint`    | `https://model-router-ten.vercel.app/v1` | OpenAI-compatible endpoint used only by **Auto (router)**.                                                                                                             |
+| Setting                    | Default                    | Description                                                                                                                                                            |
+| -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chutes.endpoint`          | `https://llm.chutes.ai/v1` | OpenAI-compatible API base URL.                                                                                                                                        |
+| `chutes.modelFilter`       | _(empty)_                  | Comma-separated terms (substring or safe regex) matched against model ids. Unsafe or invalid regexes are treated literally. Example: `deepseek, qwen` or `Qwen3.*TEE`. |
+| `chutes.requestTimeoutMs`  | `15000`                    | Timeout for fetching the model list.                                                                                                                                   |
+| `chutes.autoRouterEnabled` | `true`                     | Show the **Auto (router)** model with automatic model selection and fallback.                                                                                          |
+| `chutes.routerEndpoint`    | `https://llm.chutes.ai/v1` | OpenAI-compatible endpoint used only by **Auto (router)**; Chutes resolves routing natively on this host.                                                              |
 
 Setting changes refresh the model list immediately. A custom model or router endpoint receives your API key and request content; configure only services you trust.
 
