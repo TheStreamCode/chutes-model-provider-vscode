@@ -1,10 +1,30 @@
 # Support
 
-Need help with the Chutes AI model provider?
+## Where to get help
 
-- **Questions & bugs:** open an issue on [GitHub Issues](https://github.com/TheStreamCode/chutes-model-provider-vscode/issues).
-- **Troubleshooting:** see [docs/troubleshooting.md](docs/troubleshooting.md).
-- **Usage:** see the [user guide](docs/user-guide.md).
-- **Maintainer:** [https://mikesoft.it](https://mikesoft.it)
+- **Usage questions and workflows:** GitHub Discussions on this repository.
+- **Bug reports and reproducible defects:** GitHub Issues using the bug report form.
+- **Security problems:** see `SECURITY.md`, never a public issue.
+- **Distribution problems** (Marketplace review, extension install): use the support channel of the
+  registry when the problem is on their side.
 
-For Chutes account, billing, or API-key questions, refer to the [Chutes documentation](https://chutes.ai/docs).
+## Before asking
+
+1. Check the README troubleshooting section and [docs/troubleshooting.md](docs/troubleshooting.md).
+2. Search existing issues and discussions.
+3. Reproduce on the latest release with a clean configuration.
+
+## What support covers
+
+This is a free, maintainer-run project. Support covers defects in this project's latest release and
+questions about documented behavior. It does not cover customized deployments, third-party
+integrations, or consulting work. Chutes account, billing, and API-key questions belong to Chutes.
+
+## Response expectations
+
+Best effort, usually within a week. Issues without version information or a reproduction may be
+closed with a request for details.
+
+## Maintainer
+
+Michael Gasperini (Mikesoft) — michael@mikesoft.it

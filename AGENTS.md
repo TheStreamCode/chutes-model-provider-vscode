@@ -81,8 +81,9 @@ maintainer, not an agent.
 Keep the git tag, the GitHub release, the Marketplace version, and the Open VSX version identical. Do not tag,
 release, or publish unless the maintainer explicitly asks for it, and never with credentials you created yourself.
 
-`main` is protected: pull request with one approving review, the `build` status check, and linear history. Work on
-a branch and open a PR; never force-push and never rewrite history.
+`main` is protected: pull request, the `build` status check, and linear history. Work on a branch and open a PR;
+never force-push and never rewrite history. Dependabot updates are configured in `.github/dependabot.yml`; they
+arrive as pull requests and must pass the same `npm run check` gate as any other change.
 
 ## Code and test standards
 

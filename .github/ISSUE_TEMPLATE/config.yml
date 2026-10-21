@@ -1,11 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Troubleshooting guide
-    url: https://github.com/TheStreamCode/chutes-model-provider-vscode/blob/main/docs/troubleshooting.md
-    about: Common problems and fixes before opening an issue.
-  - name: Chutes documentation
+  - name: Questions and workflows
+    url: https://github.com/TheStreamCode/chutes-model-provider-vscode/discussions
+    about: Ask usage questions and share workflows in GitHub Discussions
+  - name: Chutes platform documentation
     url: https://chutes.ai/docs
-    about: Account, billing, and API-key questions.
-  - name: Sponsor
-    url: https://github.com/sponsors/TheStreamCode
-    about: Support continued development.
+    about: Account, billing, and API-key questions about the Chutes platform

@@ -17,11 +17,8 @@
     "color": "#0d1117",
     "theme": "dark"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TheStreamCode/chutes-model-provider-vscode"
-  },
-  "homepage": "https://github.com/TheStreamCode/chutes-model-provider-vscode#readme",
+  "repository": "github:TheStreamCode/chutes-model-provider-vscode",
+  "homepage": "https://marketplace.visualstudio.com/items?itemName=mikesoft.chutes-model-provider-vscode",
   "bugs": {
     "url": "https://github.com/TheStreamCode/chutes-model-provider-vscode/issues"
   },
@@ -37,22 +34,20 @@
     "Chat"
   ],
   "keywords": [
-    "chutes",
+    "agent-mode",
     "ai",
-    "llm",
-    "language model",
-    "model provider",
-    "copilot",
-    "chat",
     "byok",
-    "openai",
+    "chat",
+    "chutes",
+    "copilot",
     "deepseek",
+    "language-model-provider",
+    "llm",
+    "openai-compatible",
     "qwen",
-    "glm",
-    "kimi",
-    "usage",
-    "cost",
-    "quota"
+    "typescript",
+    "vscode",
+    "vscode-extension"
   ],
   "main": "./dist/extension.js",
   "contributes": {

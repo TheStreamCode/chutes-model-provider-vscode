@@ -63,3 +63,17 @@ Before opening a pull request:
 2. Use `npm run vsix` and install the package locally when changing activation, contributions, or packaging.
 3. Update `CHANGELOG.md` when the change is user-visible.
 4. Update `README.md` or files in `docs/` when setup, behavior, or support guidance changes.
+
+## Commit and pull request conventions
+
+- Follow Conventional Commits (`type(scope): summary`, English, imperative mood).
+- Open an issue first for behavior changes, unless the change is a typo or a documentation fix.
+- Keep one problem per pull request; do not mix refactors with behavior changes.
+- `main` is protected: changes land through pull requests that pass the required CI checks.
+
+## Maintainer-only areas
+
+- Release tags, GitHub releases, and Marketplace or Open VSX publication are performed only by the
+  maintainer.
+- `package-lock.json` is updated only through npm, never by hand.
+- CI workflows, release metadata, and the files under `.github/` are maintainer-maintained surfaces.
