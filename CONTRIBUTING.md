@@ -11,18 +11,25 @@ Thanks for your interest in improving Chutes AI — Chat Model Provider.
 ## Development setup
 
 1. Install the exact dependency set from the lockfile:
+
    ```bash
    npm ci
    ```
+
 2. Build the extension:
+
    ```bash
    npm run compile
    ```
+
 3. Run the unit tests:
+
    ```bash
    npm test
    ```
+
 4. Run the complete local quality gate:
+
    ```bash
    npm run check
    ```
