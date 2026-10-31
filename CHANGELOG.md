@@ -1,8 +1,8 @@
 # Change Log
 
-## Unreleased
+## [Unreleased]
 
-## 0.4.6 - 2026-08-23
+## [0.4.6] - 2026-08-23
 
 ### Fixed
 
@@ -19,7 +19,7 @@
 - The `chutes.routerEndpoint` default is now `https://llm.chutes.ai/v1`; the
   setting remains for custom gateways only.
 
-## 0.4.5 - 2026-08-08
+## [0.4.5] - 2026-08-08
 
 ### Fixed
 
@@ -46,7 +46,7 @@
 - Updated vulnerable transitive development dependencies used by VSIX packaging (`brace-expansion`, `fast-uri`,
   `js-yaml`, and `undici`).
 
-## 0.4.4 - 2026-08-01
+## [0.4.4] - 2026-08-01
 
 ### Fixed
 
@@ -68,7 +68,7 @@
 - Escaped Markdown metacharacters, including backslashes and table separators, in one pass so API-provided usage
   labels cannot create ambiguous escaping sequences.
 
-## 0.4.3 - 2026-08-01
+## [0.4.3] - 2026-08-01
 
 ### Fixed
 
@@ -90,32 +90,32 @@
 - Enabled private vulnerability reporting and Dependabot security updates while keeping routine version-update PRs disabled.
 - Escaped API-provided Markdown values before rendering account and quota information in chat.
 
-## 0.4.2 - 2026-07-13
+## [0.4.2] - 2026-07-13
 
 ### Changed
 
 - Improved legal documentation, trademark notices, third-party terms references, and metadata cleanup.
 
-## 0.4.1 - 2026-07-10
+## [0.4.1] - 2026-07-10
 
 ### Changed
 
 - Upgraded TypeScript from `^6.0.3` to `^7.0.0` (resolved 7.0.2). No source or configuration changes were required.
 
-## 0.4.0 - 2026-06-21
+## [0.4.0] - 2026-06-21
 
 - Added an **Auto (router)** model that delegates model selection and automatic fallback to Chutes' native model router. Pick **Auto (router)** in the model list and your prompt is classified and routed to a suitable model; if that model is cold or unavailable, the router fails over automatically — no manual switching. Controlled by the new `chutes.autoRouterEnabled` (on by default) and `chutes.routerEndpoint` settings.
 
-## 0.3.0 - 2026-06-18
+## [0.3.0] - 2026-06-18
 
 - Added a **`@chutes` chat participant** for usage monitoring inside the chat panel: `@chutes /usage` shows spend for the current billing windows (monthly cap, 4-hour window) and your daily request quota; `@chutes /quota` shows per-model quotas. It reuses the API key already configured for the provider.
 
-## 0.2.1 - 2026-06-18
+## [0.2.1] - 2026-06-18
 
 - Fixed: entering the API key could silently do nothing. Saving the key fired a model-list change event in the middle of resolving models, which discarded the result. The provider no longer fires that event while resolving; the list now refreshes only after the key is managed. Key entry is reliable.
 - Added screenshots to the README and Marketplace listing.
 
-## 0.2.0 - 2026-06-18
+## [0.2.0] - 2026-06-18
 
 - Fixed: selecting **Chutes AI** under "Manage Models" now always opens the API-key input box. Previously, if you dismissed the first prompt, the field never reappeared on subsequent clicks.
 - The API-key box now opens directly on provider selection (no intermediate notification) and dedupes concurrent prompts.
@@ -123,7 +123,7 @@
 - Added a Trademarks acknowledgment for the Chutes name and marks.
 - Removed the Open VSX badge — the extension targets VS Code's native chat.
 
-## 0.1.0 - 2026-06-18
+## [0.1.0] - 2026-06-18
 
 - Initial release.
 - Registers Chutes.ai as a VS Code language model provider.
