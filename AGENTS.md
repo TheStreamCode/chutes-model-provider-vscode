@@ -64,8 +64,9 @@ dependency audit, the offline test suite, a production bundle, and `vsce ls` to 
 
 ## Release and publishing
 
-Releases are cut manually; there is no auto-publish workflow, and re-adding one is a deliberate decision for the
-maintainer, not an agent.
+Releases are cut manually; the tag creates the GitHub Release. Publishing to the registries is a
+separate, owner-controlled manual dispatch of the same workflow, which uses OIDC trusted publishing
+and stores no long-lived token.
 
 1. Bump `version` with `npm version --no-git-tag-version <patch|minor|major>` so `package.json` and
    `package-lock.json` stay in sync, then update `version` and `date-released` in `CITATION.cff`.
@@ -74,9 +75,9 @@ maintainer, not an agent.
    `dist/extension.js`, `media/icon.png`, `package.json`, `README.md`, `CHANGELOG.md`, `LICENSE`,
    `THIRD_PARTY_NOTICES.md`, and `CITATION.cff`.
 4. Tag `vX.Y.Z` and create the GitHub release.
-5. Publish to both registries with the same VSIX: `npx vsce publish` (publisher `mikesoft`, needs a Marketplace
-   PAT via `vsce login` or `VSCE_PAT`) and `npx ovsx publish <file>.vsix -p <token>` (`ovsx` is intentionally not
-   a project dependency).
+5. Publish the same VSIX to both registries by dispatching the Release workflow with the release tag.
+   It authenticates through OIDC trusted publishing; no Marketplace or Open VSX token is stored in the
+   repository.
 
 Keep the git tag, the GitHub release, the Marketplace version, and the Open VSX version identical. Do not tag,
 release, or publish unless the maintainer explicitly asks for it, and never with credentials you created yourself.
@@ -119,8 +120,8 @@ arrive as pull requests and must pass the same `npm run check` gate as any other
   VS Code `SecretStorage` through `SecretStore`.
 - `CHUTES_KEY` is used exclusively by `npm run test:live`. Never hardcode it, never echo it, and do not run that
   script unless the maintainer asks and the variable is already present in the environment.
-- Publishing tokens (`VSCE_PAT`, an Open VSX token) live outside the repository. Never commit them, print them, or
-  add them to workflows without an explicit request.
+- Publishing uses OIDC trusted publishing from the manually dispatched Release workflow; no registry
+  token is stored in the repository. Never add long-lived publishing tokens to files, logs, or workflows.
 
 ## Security and privacy
 
