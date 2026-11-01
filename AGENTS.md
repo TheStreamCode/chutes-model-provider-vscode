@@ -74,7 +74,8 @@ and stores no long-lived token.
 3. Run `npm run check`, then `npm run vsix`, and inspect the VSIX file list before shipping. It must contain only
    `dist/extension.js`, `media/icon.png`, `package.json`, `README.md`, `CHANGELOG.md`, `LICENSE`,
    `THIRD_PARTY_NOTICES.md`, and `CITATION.cff`.
-4. Tag `vX.Y.Z` and create the GitHub release.
+4. Tag `vX.Y.Z` and push it; the Release workflow creates the GitHub release with the VSIX and its
+   checksum.
 5. Publish the same VSIX to both registries by dispatching the Release workflow with the release tag.
    It authenticates through OIDC trusted publishing; no Marketplace or Open VSX token is stored in the
    repository.
