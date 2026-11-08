@@ -2,7 +2,7 @@
   "name": "chutes-model-provider-vscode",
   "displayName": "Chutes AI Provider for GitHub Copilot Chat",
   "description": "Integrate Chutes.ai open-source models (DeepSeek, Qwen, GLM, Kimi and more) into VS Code's GitHub Copilot Chat — auto-discovered, with streaming, tool calling and vision.",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "private": true,
   "packageManager": "npm@11.16.0",
   "publisher": "mikesoft",
@@ -18,7 +18,7 @@
     "theme": "dark"
   },
   "repository": "github:TheStreamCode/chutes-model-provider-vscode",
-  "homepage": "https://marketplace.visualstudio.com/items?itemName=mikesoft.chutes-model-provider-vscode",
+  "homepage": "https://github.com/TheStreamCode/chutes-model-provider-vscode",
   "bugs": {
     "url": "https://github.com/TheStreamCode/chutes-model-provider-vscode/issues"
   },

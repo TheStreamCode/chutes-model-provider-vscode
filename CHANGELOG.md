@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.4.8] - 2026-11-08
+
+### Fixed
+
+- Use the GitHub repository as the Marketplace homepage. `vsce publish` rejected the previous
+  Marketplace URL because it resolves to the publisher page, not this extension.
+
 ## [0.4.7] - 2026-11-08
 
 ### Changed
