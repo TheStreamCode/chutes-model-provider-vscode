@@ -240,11 +240,26 @@ async function main(): Promise<void> {
       payload.quotas,
       payload.quotaUsageFallback,
       payload.quotaUsageMe,
-      payload.invocationStatsLlm
+      payload.invocationStatsLlm,
+      payload.me
     );
     check('usage windows resolved', data.windows.length > 0, data.windows.map((w) => w.label).join(', '));
     const billing = data.windows.find((w) => w.kind === 'billing-cycle');
-    check('billing-cycle spend present', !!billing, billing ? `$${billing.used} / $${billing.limit}` : 'none');
+    const fourHour = data.windows.find((w) => w.kind === 'rolling-4h');
+    if (data.plan?.planName === 'Pay-as-you-go') {
+      check(
+        'no monthly billing cap under pay-as-you-go',
+        !billing,
+        billing ? `$${billing.used} / $${billing.limit}` : 'none'
+      );
+      check(
+        '4-hour rate-limit window present',
+        !!fourHour,
+        fourHour ? `$${fourHour.used} / $${fourHour.limit}` : 'none'
+      );
+    } else {
+      check('billing-cycle spend present', !!billing, billing ? `$${billing.used} / $${billing.limit}` : 'none');
+    }
     const md = formatUsageMarkdown(data);
     check('usage markdown renders', md.includes('Chutes usage'));
     console.log(

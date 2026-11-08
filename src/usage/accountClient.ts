@@ -17,6 +17,7 @@ export interface DashboardPayload {
   quotaUsageMe: JsonContainer | null;
   quotaUsageFallback: JsonContainer | null;
   invocationStatsLlm: JsonContainer | null;
+  me: JsonContainer | null;
 }
 
 export class ChutesAccountClient {
@@ -27,11 +28,12 @@ export class ChutesAccountClient {
 
   /** Fetches the account/usage endpoints needed to summarize spend and quotas. */
   async getDashboardPayload(signal?: AbortSignal): Promise<DashboardPayload> {
-    const [subscriptionUsage, quotas, quotaUsageMe, invocationStatsLlm] = await Promise.all([
+    const [subscriptionUsage, quotas, quotaUsageMe, invocationStatsLlm, me] = await Promise.all([
       this.getJsonContainer('/users/me/subscription_usage', signal),
       this.getJsonContainer('/users/me/quotas', signal),
       this.getJsonContainer('/users/me/quota_usage/me', signal).catch(() => null),
-      this.getJsonContainer('/invocations/stats/llm', signal).catch(() => null)
+      this.getJsonContainer('/invocations/stats/llm', signal).catch(() => null),
+      this.getJsonContainer('/users/me', signal).catch(() => null)
     ]);
     const quotaUsageFallback = hasQuotaUsageData(quotaUsageMe) ? null : await this.getQuotaUsagePayload(quotas, signal);
 
@@ -39,7 +41,7 @@ export class ChutesAccountClient {
       throw new Error('Unexpected API response shape for /users/me/subscription_usage');
     }
 
-    return { subscriptionUsage, quotas, quotaUsageMe, quotaUsageFallback, invocationStatsLlm };
+    return { subscriptionUsage, quotas, quotaUsageMe, quotaUsageFallback, invocationStatsLlm, me };
   }
 
   private async getJsonContainer(path: string, signal?: AbortSignal): Promise<JsonContainer> {

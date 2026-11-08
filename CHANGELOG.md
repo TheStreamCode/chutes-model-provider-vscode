@@ -1,6 +1,20 @@
 # Change Log
 
-## [Unreleased]
+## [0.4.7] - 2026-11-08
+
+### Changed
+
+- Treat an uncapped monthly payload as pay-as-you-go: `@chutes /usage` labels the account
+  **Pay-as-you-go**, hides the obsolete monthly price and monthly cap, and shows the pay-as-you-go
+  balance from `/users/me` when the account API returns it.
+
+### Fixed
+
+- Mark live catalogue models with no `supported_features` metadata as tool-capable. Chutes omits the
+  field for non-TEE models (for example GLM-5.3 and Kimi-K2.7-Code), so they now appear in agent
+  mode instead of being treated as chat-only.
+- Skip usage windows that have no used, limit, or remaining values, so the uncapped monthly payload
+  no longer renders a blank **Billing Cycle Cap** row.
 
 ## [0.4.6] - 2026-08-23
 

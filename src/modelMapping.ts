@@ -141,9 +141,17 @@ function isSafeRegex(pattern: string): boolean {
   return true;
 }
 
+/**
+ * Chutes omits supported_features for non-TEE models even though they accept
+ * tool calls. Treat unknown metadata as tool-capable and exclude only an
+ * explicit feature list that does not include tools.
+ */
+function supportsToolCalling(m: ChutesRawModel): boolean {
+  return !Array.isArray(m.supported_features) || m.supported_features.includes('tools');
+}
+
 /** Maps a Chutes model to the VS Code chat model descriptor. */
 export function toChatInformation(m: ChutesRawModel): vscode.LanguageModelChatInformation {
-  const features = stringArrayOrDefault(m.supported_features, []);
   const context = positiveInteger(m.context_length) ?? positiveInteger(m.max_model_len) ?? FALLBACK_CONTEXT;
   const maxOutput = Math.min(positiveInteger(m.max_output_length) ?? context, context);
 
@@ -171,7 +179,7 @@ export function toChatInformation(m: ChutesRawModel): vscode.LanguageModelChatIn
     tooltip: m.id,
     detail: detail.join(' · '),
     capabilities: {
-      toolCalling: features.includes('tools'),
+      toolCalling: supportsToolCalling(m),
       imageInput: stringArrayOrDefault(m.input_modalities, []).includes('image')
     }
   };

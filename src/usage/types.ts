@@ -43,6 +43,7 @@ export interface DashboardData {
   windows: UsageWindow[];
   quotas: QuotaEntry[];
   plan: PlanInfo | null;
+  paygCreditUsd: number | null;
 }
 
 export interface QuotaUsageSummary {

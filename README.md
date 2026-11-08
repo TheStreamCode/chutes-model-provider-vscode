@@ -54,7 +54,15 @@ Palette.
 - Streaming with cancellation, including tool-call assembly for agent mode.
 - Secure key storage: the API key lives in VS Code SecretStorage (the OS keychain), never in settings.
 - Configurable filtering to narrow the picker to the models you use.
-- Usage and spend in chat through `@chutes /usage` and `@chutes /quota`.
+- Usage, rate-limit windows, quotas, and pay-as-you-go balance in chat through `@chutes /usage` and
+  `@chutes /quota`.
+
+### Billing
+
+Chutes currently bills usage pay-as-you-go and does not offer monthly plans. `@chutes /usage` shows
+the 4-hour rate-limit window, the daily request quota, and the pay-as-you-go balance when the
+account API returns it. The extension does not display a monthly plan price or a monthly cap for a
+pay-as-you-go account.
 
 ![Using a Chutes vision model in VS Code Chat](https://raw.githubusercontent.com/TheStreamCode/chutes-model-provider-vscode/main/media/screenshot-chat.png)
 

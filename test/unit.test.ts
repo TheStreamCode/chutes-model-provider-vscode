@@ -103,8 +103,19 @@ test('toChatInformation maps fields and capabilities', () => {
 test('toChatInformation caps output at context and tolerates missing metadata', () => {
   const info = toChatInformation(model({ id: 'p/Tiny', context_length: 8000, max_output_length: 99999 }));
   assert.equal(info.maxOutputTokens, 8000);
-  assert.equal(info.capabilities.toolCalling, false);
+  // Chutes omits supported_features for non-TEE models; they still accept tools.
+  assert.equal(info.capabilities.toolCalling, true);
   assert.equal(info.capabilities.imageInput, false);
+});
+
+test('toChatInformation treats an explicit non-tool feature list as no tool calling', () => {
+  const info = toChatInformation(model({ id: 'p/NoTools', supported_features: ['reasoning'] }));
+  assert.equal(info.capabilities.toolCalling, false);
+});
+
+test('toChatInformation keeps non-TEE models without supported_features tool-capable', () => {
+  const info = toChatInformation(model({ id: 'zai-org/GLM-5.3' }));
+  assert.equal(info.capabilities.toolCalling, true);
 });
 
 test('toChatInformation rejects invalid numeric metadata at the API boundary', () => {
@@ -781,20 +792,23 @@ test('formatUsageMarkdown renders plan and windows table', () => {
         resetLabel: null
       }
     ],
-    quotas: []
+    quotas: [],
+    paygCreditUsd: 53.5
   };
   const md = formatUsageMarkdown(data);
   assert.match(md, /Chutes usage/);
-  assert.match(md, /\*\*Plan:\*\* Pro · \$20\/mo/);
+  assert.match(md, /\*\*Billing:\*\* Pro · \$20\/mo/);
+  assert.match(md, /\*\*PAYG balance:\*\* \$53\.50/);
   assert.match(md, /\$55\.34/); // USD formatted to 2 decimals
   assert.match(md, /5,000/); // requests with thousands separator
 });
 
 test('formatUsageMarkdown handles empty data and unlimited limits', () => {
-  assert.match(formatUsageMarkdown({ plan: null, windows: [], quotas: [] }), /No usage data/);
+  assert.match(formatUsageMarkdown({ plan: null, windows: [], quotas: [], paygCreditUsd: null }), /No usage data/);
   const unlimited = formatUsageMarkdown({
     plan: null,
     quotas: [],
+    paygCreditUsd: null,
     windows: [
       {
         id: 'd',
@@ -816,6 +830,7 @@ test('formatQuotasMarkdown renders rows, unlimited, and empty state', () => {
   const md = formatQuotasMarkdown({
     plan: null,
     windows: [],
+    paygCreditUsd: null,
     quotas: [
       { modelLabel: 'All Models', quota: 5000, lastUpdated: null },
       { modelLabel: 'deepseek-ai/DeepSeek-V3', quota: 0, lastUpdated: null }
@@ -824,7 +839,7 @@ test('formatQuotasMarkdown renders rows, unlimited, and empty state', () => {
   assert.match(md, /All Models/);
   assert.match(md, /5,000/);
   assert.match(md, /Unlimited/);
-  assert.match(formatQuotasMarkdown({ plan: null, windows: [], quotas: [] }), /No quota data/);
+  assert.match(formatQuotasMarkdown({ plan: null, windows: [], quotas: [], paygCreditUsd: null }), /No quota data/);
 });
 
 test('usage markdown escapes API-provided table and inline markdown', () => {
@@ -838,7 +853,8 @@ test('usage markdown escapes API-provided table and inline markdown', () => {
       paygDiscountPercent: null
     },
     windows: [],
-    quotas: [{ modelLabel: String.raw`model\|unsafe`, quota: 10, lastUpdated: null }]
+    quotas: [{ modelLabel: String.raw`model\|unsafe`, quota: 10, lastUpdated: null }],
+    paygCreditUsd: null
   };
   assert.ok(formatUsageMarkdown(data).includes('Pro \\*preview\\*'));
   assert.ok(formatQuotasMarkdown(data).includes(String.raw`model\\\|unsafe`));
@@ -861,6 +877,40 @@ test('normalizeDashboardData parses spend windows and derives the plan', () => {
   assert.ok(Math.abs((billing?.used ?? 0) - 55.339) < 0.001);
   assert.equal(billing?.limit, 100);
   assert.ok(data.windows.some((w) => w.kind === 'daily-requests'));
+});
+
+test('normalizeDashboardData treats an uncapped monthly payload as pay-as-you-go', () => {
+  const subscriptionUsage = {
+    subscription: true,
+    custom: true,
+    monthly_price: 20,
+    monthly: { uncapped: true },
+    four_hour: { usage: 0, cap: 8.333333333333332, remaining: 8.333333333333332 }
+  };
+  const quotas = [{ chute_id: '*', quota: 5001, model: 'All Models' }];
+  const data = normalizeDashboardData(
+    subscriptionUsage as never,
+    quotas as never,
+    null,
+    { used: 0, quota: 5001 },
+    null,
+    { balance: 53.50094759099999 } as never
+  );
+
+  assert.equal(data.plan?.planName, 'Pay-as-you-go');
+  assert.equal(data.plan?.monthlyPriceUsd, null);
+  assert.equal(data.plan?.monthlyCapUsd, null);
+  assert.equal(data.paygCreditUsd, 53.50094759099999);
+  assert.ok(!data.windows.some((window) => window.kind === 'billing-cycle'));
+  const fourHour = data.windows.find((window) => window.kind === 'rolling-4h');
+  assert.ok(fourHour);
+  assert.equal(fourHour?.limit, 8.333333333333332);
+
+  const md = formatUsageMarkdown(data);
+  assert.match(md, /\*\*Billing:\*\* Pay-as-you-go/);
+  assert.match(md, /\*\*PAYG balance:\*\* \$53\.50/);
+  assert.doesNotMatch(md, /Billing Cycle Cap/);
+  assert.doesNotMatch(md, /\$20\/mo/);
 });
 
 test('quota normalization preserves unlimited and rejects negative API values', () => {
@@ -911,6 +961,9 @@ test('account client caps quota fallback fan-out', async () => {
     if (path === '/invocations/stats/llm') {
       return Response.json([]);
     }
+    if (path === '/users/me') {
+      return Response.json({});
+    }
     perChuteRequests++;
     return Response.json({ used: 0, quota: 10 });
   }) as typeof fetch;
@@ -936,6 +989,9 @@ test('account client limits concurrent quota fallback requests', async () => {
     }
     if (path === '/invocations/stats/llm') {
       return Response.json([]);
+    }
+    if (path === '/users/me') {
+      return Response.json({});
     }
     active++;
     maxActive = Math.max(maxActive, active);
@@ -963,6 +1019,9 @@ test('account client ignores negative quota-usage sentinels and uses fallback da
     }
     if (path === '/invocations/stats/llm') {
       return Response.json([]);
+    }
+    if (path === '/users/me') {
+      return Response.json({});
     }
     fallbackRequests++;
     return Response.json({ used: 2, quota: 10 });

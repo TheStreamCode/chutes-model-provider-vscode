@@ -31,7 +31,8 @@ export function createUsageChatHandler(secrets: SecretStore): vscode.ChatRequest
         payload.quotas,
         payload.quotaUsageFallback,
         payload.quotaUsageMe,
-        payload.invocationStatsLlm
+        payload.invocationStatsLlm,
+        payload.me
       );
     } catch (err) {
       if (token.isCancellationRequested || controller.signal.aborted) {
@@ -57,7 +58,13 @@ export function formatUsageMarkdown(data: DashboardData): string {
   const plan = data.plan;
   if (plan?.planName) {
     const price = plan.monthlyPriceUsd != null ? ` · $${plan.monthlyPriceUsd}/mo` : '';
-    lines.push(`**Plan:** ${escapeInlineMarkdown(plan.planName)}${price}`);
+    lines.push(`**Billing:** ${escapeInlineMarkdown(plan.planName)}${price}`);
+  }
+  if (data.paygCreditUsd != null) {
+    lines.push(`**PAYG balance:** $${data.paygCreditUsd.toFixed(2)}`);
+  }
+  if (plan?.planName === 'Pay-as-you-go') {
+    lines.push('_Usage is billed per request; the 4-hour window is a rate limit._');
   }
   lines.push('');
 

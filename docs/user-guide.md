@@ -23,11 +23,15 @@ setup. Pick a concrete catalogue id to pin one model.
 ## Chat modes
 
 - **Ask / Edit** — any Chutes chat model works.
-- **Agent mode** — VS Code only offers models that support tool calling. The extension marks each model's capability from the Chutes API, so tool-capable models (most of them) appear automatically.
+- **Agent mode** — VS Code only offers models that support tool calling. The extension marks each model's capability from the Chutes API; when Chutes omits `supported_features` (non-TEE models), the model is treated as tool-capable, so tool-capable models appear automatically.
 
 ## Vision
 
 Models that accept image input (the picker marks them via their capabilities) can read images you attach to a chat message.
+
+## Usage and billing
+
+Chutes currently bills usage pay-as-you-go and does not offer monthly plans. Run **`@chutes /usage`** to see the 4-hour rate-limit window, the daily request quota, and the pay-as-you-go balance when the account API returns it. A pay-as-you-go account does not show a monthly plan price or a monthly cap. **`@chutes /quota`** shows per-model daily quotas.
 
 ## Request paths and data
 

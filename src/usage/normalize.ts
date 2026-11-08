@@ -20,7 +20,8 @@ export function normalizeDashboardData(
   quotasPayload: JsonContainer,
   quotaUsagePayload: JsonContainer | null = null,
   quotaUsageMePayload: JsonContainer | null = null,
-  invocationStatsPayload: JsonContainer | null = null
+  invocationStatsPayload: JsonContainer | null = null,
+  mePayload: JsonContainer | null = null
 ): DashboardData {
   const usageSource = unwrapUsagePayload(subscriptionUsage);
   const quotas = normalizeQuotas(quotasPayload);
@@ -28,7 +29,25 @@ export function normalizeDashboardData(
   const quotaUsageMe = normalizeQuotaUsage(quotaUsageMePayload);
   const invocationStats = normalizeInvocationStats(invocationStatsPayload);
   const windows = normalizeUsageWindows(usageSource, quotas, quotaUsageFallback, quotaUsageMe, invocationStats);
-  return { windows, quotas, plan: normalizePlan(usageSource, windows) };
+  return {
+    windows,
+    quotas,
+    plan: normalizePlan(usageSource, windows),
+    paygCreditUsd: normalizePaygCredit(mePayload)
+  };
+}
+
+export function normalizePaygCredit(payload: JsonContainer | null): number | null {
+  const obj = asObject(payload);
+  if (!obj) {
+    return null;
+  }
+  return (
+    asNumber(obj.balance) ??
+    asNumber(obj.effective_balance) ??
+    asNumber(asObject(obj.current_balance)?.effective_balance) ??
+    asNumber(obj.payment_balance)
+  );
 }
 
 export function normalizeUsageWindows(
@@ -120,7 +139,7 @@ export function normalizeUsageWindows(
       const resetLabel = pickString(raw, payload, candidate.resetKeys, candidate.nestedResetKeys ?? ['reset_label']);
       const label = pickString(raw, payload, [], 'label') ?? candidate.label;
 
-      if (raw === null && used === null && limit === null && remaining === null) {
+      if (used === null && limit === null && remaining === null) {
         return null;
       }
 
@@ -237,16 +256,8 @@ export function normalizePlan(payload: JsonObject, windows: UsageWindow[] = []):
   const fourHourCap = asObject(payload.four_hour_window);
   const dailyQuota = asObject(payload.daily_quota_usage);
 
-  const planName = asString(source.name) ?? asString(payload.plan_name) ?? derivePlanName(payload);
-  const monthlyPriceUsd = asNumber(source.monthly_price) ?? asNumber(payload.monthly_price);
-  const monthlyCapUsd =
-    asNumber(source.monthly_cap_usd) ??
-    asNumber(payload.monthly_cap_usd) ??
-    asNumber(payload.billing_cycle_limit) ??
-    asNumber(asObject(payload.monthly)?.cap) ??
-    asNumber(billingCap?.limit) ??
-    billingWindow?.limit ??
-    null;
+  const monthly = asObject(payload.monthly);
+  const payAsYouGo = monthly?.uncapped === true;
   const fourHourCapUsd =
     asNumber(source.four_hour_cap_usd) ??
     asNumber(payload.four_hour_cap_usd) ??
@@ -263,6 +274,28 @@ export function normalizePlan(payload: JsonObject, windows: UsageWindow[] = []):
     dailyWindow?.limit ??
     null;
   const paygDiscountPercent = asNumber(source.payg_discount_percent) ?? asNumber(payload.payg_discount_percent);
+
+  if (payAsYouGo) {
+    return {
+      planName: 'Pay-as-you-go',
+      monthlyPriceUsd: null,
+      monthlyCapUsd: null,
+      fourHourCapUsd,
+      dailyRequestLimit,
+      paygDiscountPercent
+    };
+  }
+
+  const planName = asString(source.name) ?? asString(payload.plan_name) ?? derivePlanName(payload);
+  const monthlyPriceUsd = asNumber(source.monthly_price) ?? asNumber(payload.monthly_price);
+  const monthlyCapUsd =
+    asNumber(source.monthly_cap_usd) ??
+    asNumber(payload.monthly_cap_usd) ??
+    asNumber(payload.billing_cycle_limit) ??
+    asNumber(monthly?.cap) ??
+    asNumber(billingCap?.limit) ??
+    billingWindow?.limit ??
+    null;
 
   if (
     planName === null &&
