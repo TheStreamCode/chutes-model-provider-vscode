@@ -132,6 +132,10 @@ test('toChatInformation uses curated context for non-TEE PAYG models', () => {
   const kimi = toChatInformation(model({ id: 'moonshotai/Kimi-K2.7-Code' }));
   assert.equal(kimi.maxInputTokens, 262_144);
   assert.match(kimi.detail ?? '', /262k ctx/);
+
+  const hy4 = toChatInformation(model({ id: 'tencent/Hy4' }));
+  assert.equal(hy4.maxInputTokens, 1_048_576);
+  assert.match(hy4.detail ?? '', /1M ctx/);
 });
 
 test('toChatInformation prefers a catalogue context_length over the curated value', () => {

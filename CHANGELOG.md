@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.4.10] - 2026-11-09
+
+### Fixed
+
+- Add the official 1M context window for Tencent Hy4 (`tencent/Hy4-preview` Hugging Face model card),
+  so the model no longer falls back to 32k.
+
 ## [0.4.9] - 2026-11-08
 
 ### Changed

@@ -172,6 +172,9 @@ function curatedContextWindow(modelId: string): number | undefined {
   if (id.includes('kimi-k2.7')) {
     return 262_144;
   }
+  if (id.includes('tencent/hy4') || id.includes('hy4-preview')) {
+    return 1_048_576;
+  }
   return undefined;
 }
 

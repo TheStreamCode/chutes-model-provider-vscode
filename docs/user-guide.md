@@ -27,7 +27,7 @@ setup. Pick a concrete catalogue id to pin one model.
 
 ## Context windows
 
-Chutes publishes context metadata for TEE models but omits it for some PAYG non-TEE rows. The extension uses curated vendor values for DeepSeek V4.1 Flash and V4 Pro (1M), Qwen3.8 Max, GLM-5.3 and GLM-5.2 Fast (1M), Qwen3.8-2.4T and Kimi-K2.7 (262k). Other rows without metadata fall back to 32k. A `context_length` returned by the catalogue always wins.
+Chutes publishes context metadata for TEE models but omits it for some PAYG non-TEE rows. The extension uses curated vendor values for DeepSeek V4.1 Flash and V4 Pro (1M), Qwen3.8 Max, GLM-5.3 and GLM-5.2 Fast (1M), Tencent Hy4 (1M, from the `tencent/Hy4-preview` Hugging Face model card), Qwen3.8-2.4T and Kimi-K2.7 (262k). Other rows without metadata fall back to 32k. A `context_length` returned by the catalogue always wins.
 
 ## Vision
 
