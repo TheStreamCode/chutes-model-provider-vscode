@@ -1,5 +1,21 @@
 # Change Log
 
+## [0.4.9] - 2026-11-08
+
+### Changed
+
+- Replaced the deprecated `@chutes` chat participant with the **Chutes AI: Show Usage** command and
+  the `chutes_usage` / `chutes_quota` language model tools. Chat participants are no longer supported
+  by the Copilot harness.
+
+### Fixed
+
+- Use curated context windows for the PAYG non-TEE models whose Chutes rows omit `context_length`:
+  DeepSeek V4.1 Flash and V4 Pro 1M, Qwen3.8 Max and GLM-5.3/GLM-5.2 Fast 1M, Qwen3.8-2.4T and
+  Kimi-K2.7 262k. Catalogue values still win.
+- Cap the fallback `maxOutputTokens` at 32k instead of using the full context window, so unknown
+  models no longer report a doubled context total.
+
 ## [0.4.8] - 2026-11-08
 
 ### Fixed

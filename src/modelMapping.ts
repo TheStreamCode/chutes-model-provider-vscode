@@ -150,16 +150,52 @@ function supportsToolCalling(m: ChutesRawModel): boolean {
   return !Array.isArray(m.supported_features) || m.supported_features.includes('tools');
 }
 
+/**
+ * Chutes omits context_length for the PAYG non-TEE rows. These values come from
+ * the vendor and models.dev canonical entries (verified 2026-10-31), matching
+ * the Chutes Build curated table. Extend only with a checkable source.
+ */
+function curatedContextWindow(modelId: string): number | undefined {
+  const id = modelId.toLowerCase();
+  if (id.includes('deepseek-v4.1-flash') || id.includes('deepseek-v4-pro-0813')) {
+    return 1_048_576;
+  }
+  if (id.includes('qwen3.8-max')) {
+    return 1_000_000;
+  }
+  if (id.includes('qwen3.8-2.4t')) {
+    return 262_144;
+  }
+  if (id.includes('glm-5.3') || id.includes('glm-5.2-fast')) {
+    return 1_000_000;
+  }
+  if (id.includes('kimi-k2.7')) {
+    return 262_144;
+  }
+  return undefined;
+}
+
+function formatContextWindow(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${Math.round(tokens / 100_000) / 10}M`;
+  }
+  return `${Math.round(tokens / 1000)}k`;
+}
+
 /** Maps a Chutes model to the VS Code chat model descriptor. */
 export function toChatInformation(m: ChutesRawModel): vscode.LanguageModelChatInformation {
-  const context = positiveInteger(m.context_length) ?? positiveInteger(m.max_model_len) ?? FALLBACK_CONTEXT;
-  const maxOutput = Math.min(positiveInteger(m.max_output_length) ?? context, context);
+  const context =
+    positiveInteger(m.context_length) ??
+    positiveInteger(m.max_model_len) ??
+    curatedContextWindow(m.id) ??
+    FALLBACK_CONTEXT;
+  const maxOutput = Math.min(positiveInteger(m.max_output_length) ?? FALLBACK_CONTEXT, context);
 
   const slash = m.id.lastIndexOf('/');
   const family = slash > 0 ? m.id.slice(0, slash) : 'chutes';
   const name = slash > 0 ? m.id.slice(slash + 1) : m.id;
 
-  const detail: string[] = [`${Math.round(context / 1000)}k ctx`];
+  const detail: string[] = [`${formatContextWindow(context)} ctx`];
   const promptPrice = nonNegativeNumber(m.pricing?.prompt);
   if (promptPrice !== undefined) {
     const completion = nonNegativeNumber(m.pricing?.completion) ?? promptPrice;

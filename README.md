@@ -11,8 +11,8 @@ Use Chutes open-source models inside VS Code chat with streaming, tool calling, 
 Chutes Model Provider is a VS Code extension that connects the Chutes.ai model catalogue to the
 Language Model Chat Provider API. It discovers every available model automatically, streams
 responses, supports tools in agent mode, and routes requests through Chutes' native model router when
-you do not want to pick a model yourself. It also exposes `@chutes` chat commands for account usage
-and quotas.
+you do not want to pick a model yourself. It also exposes a **Chutes AI: Show Usage** command and the
+`chutes_usage` / `chutes_quota` language model tools for account usage and quotas.
 
 It is aimed at developers who already use GitHub Copilot Chat but want to run DeepSeek, Qwen, GLM,
 Kimi, and other Chutes-hosted models from the same chat panel. A GitHub Copilot subscription is not
@@ -54,13 +54,13 @@ Palette.
 - Streaming with cancellation, including tool-call assembly for agent mode.
 - Secure key storage: the API key lives in VS Code SecretStorage (the OS keychain), never in settings.
 - Configurable filtering to narrow the picker to the models you use.
-- Usage, rate-limit windows, quotas, and pay-as-you-go balance in chat through `@chutes /usage` and
-  `@chutes /quota`.
+- Usage, rate-limit windows, quotas, and pay-as-you-go balance through the **Chutes AI: Show Usage**
+  command and the `#chutesUsage` / `#chutesQuota` tools in agent mode.
 
 ### Billing
 
-Chutes currently bills usage pay-as-you-go and does not offer monthly plans. `@chutes /usage` shows
-the 4-hour rate-limit window, the daily request quota, and the pay-as-you-go balance when the
+Chutes currently bills usage pay-as-you-go and does not offer monthly plans. **Chutes AI: Show Usage**
+shows the 4-hour rate-limit window, the daily request quota, and the pay-as-you-go balance when the
 account API returns it. The extension does not display a monthly plan price or a monthly cap for a
 pay-as-you-go account.
 
@@ -84,8 +84,8 @@ pay-as-you-go account.
 
 Changes to any `chutes.*` setting invalidate the model cache immediately; no window reload is
 required. Each new outbound endpoint is deliberate: the selected-model path uses `chutes.endpoint`,
-Auto (router) uses `chutes.routerEndpoint`, and the `@chutes` usage commands use
-`https://api.chutes.ai`.
+Auto (router) uses `chutes.routerEndpoint`, and the **Chutes AI: Show Usage** command and the
+`chutes_usage` / `chutes_quota` tools use `https://api.chutes.ai`.
 
 | Command                     | Purpose                            |
 | --------------------------- | ---------------------------------- |
@@ -96,8 +96,9 @@ Auto (router) uses `chutes.routerEndpoint`, and the `@chutes` usage commands use
 
 Prompts, attachments, and advertised tool data are sent only to the endpoint that serves the selected
 model: `chutes.endpoint` for a concrete model and `chutes.routerEndpoint` for Auto (router). The
-`@chutes` usage commands query `https://api.chutes.ai`. A custom endpoint receives the same request
-data, so configure only services you trust.
+the **Chutes AI: Show Usage** command and the `chutes_usage` / `chutes_quota` tools query
+`https://api.chutes.ai`. A custom endpoint receives the same request data, so configure only
+services you trust.
 
 The API key is stored in VS Code SecretStorage and is never written to settings or logs. The
 extension runs no local server, persists no prompts, and collects no telemetry. Use of Chutes remains

@@ -25,21 +25,25 @@ setup. Pick a concrete catalogue id to pin one model.
 - **Ask / Edit** — any Chutes chat model works.
 - **Agent mode** — VS Code only offers models that support tool calling. The extension marks each model's capability from the Chutes API; when Chutes omits `supported_features` (non-TEE models), the model is treated as tool-capable, so tool-capable models appear automatically.
 
+## Context windows
+
+Chutes publishes context metadata for TEE models but omits it for some PAYG non-TEE rows. The extension uses curated vendor values for DeepSeek V4.1 Flash and V4 Pro (1M), Qwen3.8 Max, GLM-5.3 and GLM-5.2 Fast (1M), Qwen3.8-2.4T and Kimi-K2.7 (262k). Other rows without metadata fall back to 32k. A `context_length` returned by the catalogue always wins.
+
 ## Vision
 
 Models that accept image input (the picker marks them via their capabilities) can read images you attach to a chat message.
 
 ## Usage and billing
 
-Chutes currently bills usage pay-as-you-go and does not offer monthly plans. Run **`@chutes /usage`** to see the 4-hour rate-limit window, the daily request quota, and the pay-as-you-go balance when the account API returns it. A pay-as-you-go account does not show a monthly plan price or a monthly cap. **`@chutes /quota`** shows per-model daily quotas.
+Chutes currently bills usage pay-as-you-go and does not offer monthly plans. Run **`Chutes AI: Show Usage`** from the Command Palette to see the 4-hour rate-limit window, the daily request quota, the pay-as-you-go balance, and per-model daily quotas. In agent mode, Copilot can call the `#chutesUsage` and `#chutesQuota` tools for the same data. A pay-as-you-go account does not show a monthly plan price or a monthly cap.
 
 ## Request paths and data
 
-| Feature                  | Destination             | Data sent                                                    |
-| ------------------------ | ----------------------- | ------------------------------------------------------------ |
-| Selected Chutes model    | `chutes.endpoint`       | API key, conversation, attachments and advertised tool data. |
-| **Auto (router)**        | `chutes.routerEndpoint` | API key, conversation, attachments and advertised tool data. |
-| `@chutes` usage commands | `https://api.chutes.ai` | API key and account usage request.                           |
+| Feature                                       | Destination             | Data sent                                                    |
+| --------------------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| Selected Chutes model                         | `chutes.endpoint`       | API key, conversation, attachments and advertised tool data. |
+| **Auto (router)**                             | `chutes.routerEndpoint` | API key, conversation, attachments and advertised tool data. |
+| **Chutes AI: Show Usage** and the usage tools | `https://api.chutes.ai` | API key and account usage request.                           |
 
 The API key remains in VS Code SecretStorage. The extension does not log prompts, attachments, account responses or
 tool arguments, and it collects no telemetry. Custom endpoints receive the same request data, so configure only

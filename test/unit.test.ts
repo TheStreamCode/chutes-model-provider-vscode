@@ -5,6 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as vscode from 'vscode';
 import {
   isChatModel,
@@ -17,7 +18,7 @@ import {
 import { convertMessages, convertTools, convertToolMode } from '../src/messageConverter';
 import { ChutesChatModelProvider } from '../src/provider';
 import { SecretStore } from '../src/secrets';
-import { formatUsageMarkdown, formatQuotasMarkdown } from '../src/chatParticipant';
+import { formatUsageMarkdown, formatQuotasMarkdown } from '../src/usage/format';
 import { normalizeDashboardData } from '../src/usage/normalize';
 import { normalizeQuotaUsage } from '../src/usage/normalize';
 import { ChutesAccountClient } from '../src/usage/accountClient';
@@ -116,6 +117,42 @@ test('toChatInformation treats an explicit non-tool feature list as no tool call
 test('toChatInformation keeps non-TEE models without supported_features tool-capable', () => {
   const info = toChatInformation(model({ id: 'zai-org/GLM-5.3' }));
   assert.equal(info.capabilities.toolCalling, true);
+});
+
+test('toChatInformation uses curated context for non-TEE PAYG models', () => {
+  const deepseek = toChatInformation(model({ id: 'deepseek-ai/DeepSeek-V4.1-Flash-1017' }));
+  assert.equal(deepseek.maxInputTokens, 1_048_576);
+  assert.equal(deepseek.maxOutputTokens, 32768);
+  assert.match(deepseek.detail ?? '', /1M ctx/);
+
+  const glm = toChatInformation(model({ id: 'zai-org/GLM-5.3' }));
+  assert.equal(glm.maxInputTokens, 1_000_000);
+  assert.match(glm.detail ?? '', /1M ctx/);
+
+  const kimi = toChatInformation(model({ id: 'moonshotai/Kimi-K2.7-Code' }));
+  assert.equal(kimi.maxInputTokens, 262_144);
+  assert.match(kimi.detail ?? '', /262k ctx/);
+});
+
+test('toChatInformation prefers a catalogue context_length over the curated value', () => {
+  const info = toChatInformation(model({ id: 'zai-org/GLM-5.3', context_length: 200000 }));
+  assert.equal(info.maxInputTokens, 200000);
+});
+
+test('manifest replaces the deprecated chat participant with language model tools', () => {
+  const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as {
+    contributes?: {
+      chatParticipants?: unknown;
+      languageModelTools?: Array<{ name: string }>;
+      commands?: Array<{ command: string }>;
+    };
+  };
+  assert.equal(manifest.contributes?.chatParticipants, undefined);
+  assert.deepEqual(
+    manifest.contributes?.languageModelTools?.map((tool) => tool.name),
+    ['chutes_usage', 'chutes_quota']
+  );
+  assert.ok(manifest.contributes?.commands?.some((command) => command.command === 'chutes.showUsage'));
 });
 
 test('toChatInformation rejects invalid numeric metadata at the API boundary', () => {
@@ -756,7 +793,7 @@ test('provider: cancelling mid-stream drops half-assembled tool calls', async ()
   assert.ok(reported.every((part) => !(part instanceof vscode.LanguageModelToolCallPart)));
 });
 
-// --- usage chat participant: markdown formatting + normalization ---
+// --- usage report: markdown formatting + normalization ---
 
 test('formatUsageMarkdown renders plan and windows table', () => {
   const data: DashboardData = {

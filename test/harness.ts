@@ -17,7 +17,7 @@ import { SecretStore } from '../src/secrets';
 import { isChatModel, applyUserFilter, toChatInformation } from '../src/modelMapping';
 import { ChutesAccountClient } from '../src/usage/accountClient';
 import { normalizeDashboardData } from '../src/usage/normalize';
-import { formatUsageMarkdown } from '../src/chatParticipant';
+import { formatUsageMarkdown } from '../src/usage/format';
 
 const KEY = process.env.CHUTES_KEY;
 if (!KEY) {
@@ -232,7 +232,7 @@ async function main(): Promise<void> {
     console.log('  info  no vision-capable model found; skipped');
   }
 
-  console.log('\n[8] Account usage (@chutes participant data path)');
+  console.log('\n[8] Account usage (Show Usage data path)');
   try {
     const payload = await new ChutesAccountClient(KEY as string).getDashboardPayload();
     const data = normalizeDashboardData(

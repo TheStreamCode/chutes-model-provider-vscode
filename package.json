@@ -2,7 +2,7 @@
   "name": "chutes-model-provider-vscode",
   "displayName": "Chutes AI Provider for GitHub Copilot Chat",
   "description": "Integrate Chutes.ai open-source models (DeepSeek, Qwen, GLM, Kimi and more) into VS Code's GitHub Copilot Chat — auto-discovered, with streaming, tool calling and vision.",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "private": true,
   "packageManager": "npm@11.16.0",
   "publisher": "mikesoft",
@@ -58,29 +58,45 @@
         "managementCommand": "chutes.manage"
       }
     ],
-    "chatParticipants": [
+    "languageModelTools": [
       {
-        "id": "chutes.usage",
-        "name": "chutes",
-        "fullName": "Chutes AI",
-        "description": "Check your Chutes usage, quotas and spend",
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "usage",
-            "description": "Show pay-as-you-go usage, rate-limit windows, and quotas"
-          },
-          {
-            "name": "quota",
-            "description": "Show per-model quotas"
-          }
-        ]
+        "name": "chutes_usage",
+        "displayName": "Chutes Usage",
+        "modelDescription": "Return the current Chutes account billing mode, pay-as-you-go balance, rate-limit windows, and daily request quota. Use when the user asks about Chutes usage, spend, limits, or remaining quota.",
+        "userDescription": "Show Chutes usage, rate-limit windows, and balance.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "chutesUsage",
+        "icon": "$(pulse)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "chutes_quota",
+        "displayName": "Chutes Quotas",
+        "modelDescription": "Return the per-model daily request quotas for the Chutes account. Use when the user asks about per-model Chutes quotas or limits.",
+        "userDescription": "Show per-model Chutes quotas.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "chutesQuota",
+        "icon": "$(checklist)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       }
     ],
     "commands": [
       {
         "command": "chutes.manage",
         "title": "Manage API Key",
+        "category": "Chutes AI"
+      },
+      {
+        "command": "chutes.showUsage",
+        "title": "Show Usage",
         "category": "Chutes AI"
       },
       {
