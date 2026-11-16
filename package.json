@@ -157,10 +157,10 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/vscode": "1.106.0",
-    "@vscode/vsce": "^4.1.0",
+    "@vscode/vsce": "^4.1.1",
     "esbuild": "^0.28.2",
-    "oxlint": "^1.91.0",
-    "prettier": "^3.9.10",
+    "oxlint": "^1.93.0",
+    "prettier": "^3.10.1",
     "typescript": "^7.0.2"
   },
   "overrides": {
